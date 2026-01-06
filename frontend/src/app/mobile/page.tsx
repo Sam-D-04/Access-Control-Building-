@@ -24,7 +24,7 @@ export default function MobilePage() {
     }
   }, [isAuthenticated, isLoading, router])
 
-  // Tôi generate QR code chứa thông tin user
+  //generate QR code chứa thông tin user
   const generateQRData = () => {
     if (!user) return ''
 
@@ -32,7 +32,7 @@ export default function MobilePage() {
       user_id: user.id,
       employee_id: user.employee_id,
       timestamp: Date.now(),
-      // Tôi tạo signature đơn giản (trong thực tế dùng JWT hoặc crypto)
+      //tạo signature đơn giản
       signature: btoa(`${user.id}-${Date.now()}`),
     }
 

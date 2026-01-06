@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 // Create axios instance
 const api = axios.create({
@@ -44,9 +44,8 @@ api.interceptors.response.use(
 
 export default api
 
-// ============================================
+
 // AUTH APIs
-// ============================================
 
 export const authAPI = {
   login: (email: string, password: string) =>
@@ -55,9 +54,8 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
 }
 
-// ============================================
+
 // USER APIs
-// ============================================
 
 export const userAPI = {
   getAll: () => api.get('/users'),
@@ -67,9 +65,8 @@ export const userAPI = {
   delete: (id: number) => api.delete(`/users/${id}`),
 }
 
-// ============================================
+
 // CARD APIs
-// ============================================
 
 export const cardAPI = {
   getAll: (userId?: number) =>
@@ -82,9 +79,8 @@ export const cardAPI = {
   delete: (id: number) => api.delete(`/cards/${id}`),
 }
 
-// ============================================
+
 // DOOR APIs
-// ============================================
 
 export const doorAPI = {
   getAll: (accessLevel?: string, departmentId?: number) =>
@@ -99,9 +95,8 @@ export const doorAPI = {
   delete: (id: number) => api.delete(`/doors/${id}`),
 }
 
-// ============================================
+
 // DEPARTMENT APIs
-// ============================================
 
 export const departmentAPI = {
   getAll: (withCount?: boolean) =>
@@ -109,9 +104,8 @@ export const departmentAPI = {
   getById: (id: number) => api.get(`/departments/${id}`),
 }
 
-// ============================================
+
 // ACCESS CONTROL APIs
-// ============================================
 
 export const accessAPI = {
   requestAccess: (data: { card_uid: string; door_id: number }) =>

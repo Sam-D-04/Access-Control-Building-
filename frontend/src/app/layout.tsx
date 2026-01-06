@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="vi">
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" />
       </head>
       <body>
         {children}

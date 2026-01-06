@@ -97,11 +97,11 @@ export default function ScannerPage() {
         time: new Date().toLocaleTimeString('vi-VN'),
       })
 
-      //tự động scan lại sau 3 giây
+      //tự động scan lại sau 2 giây
       setTimeout(() => {
         setIsScanning(true)
         setLastResult(null)
-      }, 3000)
+      }, 2000)
     } catch (error: any) {
       console.error('Scan error:', error)
 
