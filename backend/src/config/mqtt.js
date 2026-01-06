@@ -117,7 +117,9 @@ function closeMqttConnection() {
         console.log('Đa dong ket noi MQTT');
     }
 }
-
+function getMqttClient() {
+    return mqttClient;
+}
 
 module.exports = {
     initMqttClient,
