@@ -244,13 +244,13 @@ async function scanQR(req, res, next) {
                 user_id: user_id,
                 door_id: door_id,
                 status: 'denied',
-                denial_reason: 'Không có thẻ hoạt động'
+                denial_reason: 'Không có thẻ hoặc thẻ không còn hoạt động'
             });
 
             return res.status(403).json({
                 success: false,
                 status: 'denied',
-                message: 'Không có thẻ hoạt động'
+                message: 'Không có thẻ hoặc thẻ không còn hoạt động'
             });
         }
 
