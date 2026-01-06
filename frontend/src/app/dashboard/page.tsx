@@ -103,14 +103,7 @@ export default function DashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="flex items-center text-sm">
-            <span className="text-gray-500">
-              {totalToday > 0
-                ? Math.round((grantedToday / totalToday) * 100)
-                : 0}
-              % tổng số truy cập
-            </span>
-          </div>
+          
         </div>
 
         {/* Bị từ chối */}
@@ -138,12 +131,6 @@ export default function DashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="flex items-center text-sm">
-            <span className="text-gray-500">
-              {totalToday > 0 ? Math.round((deniedToday / totalToday) * 100) : 0}%
-              tổng số truy cập
-            </span>
-          </div>
         </div>
 
         {/* Tổng nhân viên */}
@@ -170,9 +157,6 @@ export default function DashboardPage() {
                 />
               </svg>
             </div>
-          </div>
-          <div className="flex items-center text-sm">
-            <span className="text-gray-500">10 active users</span>
           </div>
         </div>
       </div>
