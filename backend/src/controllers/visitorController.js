@@ -1,7 +1,3 @@
-// ============================================
-// BACKEND API - Visitor Camera
-// File: backend/src/controllers/visitorController.js
-// ============================================
 
 const { executeQuery, getOneRow } = require('../config/database');
 const { CustomError } = require('../middlewares/errorHandler');
@@ -9,12 +5,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 
-// ============================================
+
 // MULTER CONFIG - Upload ảnh
-// ============================================
 
 // Tạo folder uploads/visitors nếu chưa có
 const uploadDir = path.join(__dirname, '../../uploads/visitors');
+
 fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
 
 // Config multer
@@ -50,9 +46,6 @@ const upload = multer({
     }
 });
 
-// ============================================
-// API ENDPOINTS
-// ============================================
 
 // POST /api/visitors/capture - Upload ảnh khách lạ
 async function captureVisitorPhoto(req, res, next) {
@@ -63,7 +56,7 @@ async function captureVisitorPhoto(req, res, next) {
         }
 
         const { notes } = req.body;
-        const capturedBy = req.user.id; // Từ authenticateToken middleware
+        const capturedBy = req.user.id; 
 
         // Đường dẫn relative từ backend root
         const photoPath = `uploads/visitors/${req.file.filename}`;
@@ -83,7 +76,7 @@ async function captureVisitorPhoto(req, res, next) {
                 u.full_name as captured_by_name,
                 u.employee_id as captured_by_employee_id
             FROM visitor_photos vp
-            LEFT JOIN users u ON vp.captured_by = u.id
+                LEFT JOIN users u ON vp.captured_by = u.id
             WHERE vp.id = ?
         `, [result.insertId]);
 
@@ -120,6 +113,9 @@ async function getVisitorPhotos(req, res, next) {
             LIMIT ? OFFSET ?
         `;
 
+        console.log("---- DEBUG SQL ----");
+        console.log(sql);
+
         const photos = await executeQuery(sql, [parseInt(limit), parseInt(offset)]);
 
         res.json({
@@ -133,6 +129,7 @@ async function getVisitorPhotos(req, res, next) {
 
     } catch (error) {
         next(error);
+        console.error(error.message);
     }
 }
 
