@@ -13,8 +13,6 @@ async function authenticateToken(req, res, next) {
             throw new CustomError('Không tìm thấy token', 401);
         }
 
-        // Token có format: "Bearer <token>"
-        // Tôi cần tách lấy phần token
         const token = authHeader.split(' ')[1];
 
         // Kiểm tra có token không
@@ -44,7 +42,7 @@ async function authenticateToken(req, res, next) {
         // Chuyển sang middleware tiếp theo
         next();
     } catch (error) {
-        // Nếu lỗi do JWT thì custom message
+        
         if (error.name === 'JsonWebTokenError') {
             next(new CustomError('Token không hợp lệ', 401));
         } else if (error.name === 'TokenExpiredError') {

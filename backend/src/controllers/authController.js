@@ -3,7 +3,7 @@ const { findUserByEmail, verifyPassword } = require('../models/User');
 const { CustomError } = require('../middlewares/errorHandler');
 
 // Controller xử lý login
-async function login(req, res, next) {
+async function login(req, res) {
     try {
         // Lấy email và password từ request body
         const { email, password } = req.body;
@@ -42,7 +42,7 @@ async function login(req, res, next) {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: '24h' // Token hết hạn sau 24 giờ
+                expiresIn: '24h'  
             }
         );
 
@@ -70,17 +70,17 @@ async function login(req, res, next) {
             user: userData
         });
     } catch (error) {
-        next(error);
+      
     }
 }
 
 // Controller lấy thông tin user hiện tại
-async function getMe(req, res, next) {
+async function getMe(req, res) {
     try {
-        // Lấy user từ req.user (đã được set bởi authenticateToken middleware)
+         
         const user = req.user;
 
-        // Tạo object user để trả về (không bao gồm password)
+         
         const userData = {
             id: user.id,
             employee_id: user.employee_id,
@@ -94,13 +94,13 @@ async function getMe(req, res, next) {
             created_at: user.created_at
         };
 
-        // Trả về response
+         
         res.json({
             success: true,
             user: userData
         });
     } catch (error) {
-        next(error);
+       
     }
 }
 

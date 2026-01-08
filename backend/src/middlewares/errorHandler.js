@@ -14,7 +14,7 @@ function handleError(error, req, res, next) {
     // Lấy status code từ error object
     let statusCode = error.statusCode;
     if (!statusCode) {
-        statusCode = 500;   // Mặc định là Internal Server Error
+        statusCode = 500;  
     }
 
     // Lấy error message

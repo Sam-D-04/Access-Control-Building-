@@ -37,7 +37,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null })
     try {
+
       const response = await authAPI.login(email, password)
+      
       const { token, user } = response.data
 
       // Save to localStorage

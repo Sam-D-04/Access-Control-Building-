@@ -57,7 +57,7 @@ export default function MonitorPage() {
         const log: AccessLog = JSON.parse(message.toString())
 
         // thêm log mới vào
-        setLogs((prev) => [log, ...prev].slice(0, 20)) // 20 logs
+        setLogs((prev) => [log, ...prev].slice(0, 20)) 
 
         // Cập nhật status
         setStats((prev) => {
@@ -95,7 +95,7 @@ export default function MonitorPage() {
         client.end()
       }
     }
-  }, []) // Chỉ chạy 1 lần khi mount
+  }, []) // Chỉ chạy 1 lần    
 
   const getInitials = (name: string) => {
     if (!name) return '??'
