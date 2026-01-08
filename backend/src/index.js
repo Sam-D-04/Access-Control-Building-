@@ -3,7 +3,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
+const path = require('path');
 const { testDatabaseConnection } = require('./config/database');
 const { initMqttClient } = require('./config/mqtt');
 const { handleError, handleNotFound } = require('./middlewares/errorHandler');
@@ -24,6 +24,10 @@ app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
     credentials: true
 }));
+
+// Serve static files (ảnh từ uploads folder)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 
 // Middleware log request đơn giản
 app.use(function(req, res, next) {

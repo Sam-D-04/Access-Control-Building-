@@ -106,11 +106,6 @@ export const departmentAPI = {
 
 //GUEST 
 
-export const guestAPI = {
- getAll: () => api.get('/guest'),
-  getById: (id: number) => api.get(`/guest/${id}`),
-}
-
 
 
 

@@ -8,7 +8,7 @@ const doorController = require('../controllers/doorController');
 const userController = require('../controllers/userController');
 const cardController = require('../controllers/cardController');
 const departmentController = require('../controllers/departmentController');
-
+const guest = require('../controllers/guest');
 // Import middlewares
 const { authenticateToken, requireRole } = require('../middlewares/auth');
 
@@ -125,6 +125,33 @@ router.get('/access/recent', authenticateToken, accessController.getRecent);
 router.get('/access/stats', authenticateToken, accessController.getStats);
 
 
+
+
+//guest
+router.post('/guest/capture',
+    authenticateToken,
+    requireRole('admin', 'security'),
+    guestController.upload.single('photo'),
+    guestController.captureguestPhoto
+);
+
+router.get('/guest/photos',
+    authenticateToken,
+    requireRole('admin', 'security'),
+    guestController.getguestPhotos
+);
+
+router.get('/guest/photos/:id',
+    authenticateToken,
+    requireRole('admin', 'security'),
+    guestController.getguestPhotoById
+);
+
+router.delete('/guest/photos/:id',
+    authenticateToken,
+    requireRole('admin'),
+    guestController.deleteguestPhoto
+);
 
 
 

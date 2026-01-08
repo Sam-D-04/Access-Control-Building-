@@ -52,6 +52,7 @@ const menuItems = [
    {
     name: "Guest",
     href: '/guest',
+    roles: ['admin', 'security'],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -62,7 +63,7 @@ const menuItems = [
         />
       </svg>
     ),
-    roles: ['security'],
+   
   },
   {
     name: 'Mã truy cập',
