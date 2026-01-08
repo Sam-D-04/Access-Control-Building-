@@ -50,8 +50,8 @@ async function getVisitorPhotos(req, res, next) {
             end_time
         } = req.query;
 
-        const limitNum = parseInt(limit);
-        const offsetNum = parseInt(offset);
+        const limitNum = parseInt(limit, 10) || 20;
+        const offsetNum = parseInt(offset, 10) || 0;
 
         let whereClauses = [];
         let whereParams = [];
@@ -86,12 +86,12 @@ async function getVisitorPhotos(req, res, next) {
             : '';
 
         // ===== QUERY DANH SÁCH =====
+        // Note: LIMIT và OFFSET không dùng ? để tránh lỗi MySQL prepared statement
         const sql = whereSQL
-            ? `SELECT * FROM visitor_photos ${whereSQL} ORDER BY captured_at DESC LIMIT ? OFFSET ?`
-            : `SELECT * FROM visitor_photos ORDER BY captured_at DESC LIMIT ? OFFSET ?`;
-        const sqlParams = [...whereParams, limitNum, offsetNum];
+            ? `SELECT * FROM visitor_photos ${whereSQL} ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`
+            : `SELECT * FROM visitor_photos ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
 
-        const photos = await executeQuery(sql, sqlParams);
+        const photos = await executeQuery(sql, whereParams);
 
         // ===== ĐẾM TỔNG SỐ =====
         const countSQL = whereSQL
