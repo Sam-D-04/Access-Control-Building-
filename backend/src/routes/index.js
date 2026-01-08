@@ -129,11 +129,10 @@ router.get('/access/stats', authenticateToken, accessController.getStats);
 
 
 
-// VISITOR ROUTES - /api/visitors (CHỤP ẢNH KHÁCH LẠ)
+// VISITOR ROUTES - /api/visitors
 router.post('/visitors/capture',
     authenticateToken,
     requireRole('admin', 'security'),
-    visitorController.upload.single('photo'),
     visitorController.captureVisitorPhoto
 );
 
