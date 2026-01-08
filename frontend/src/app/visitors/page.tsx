@@ -264,7 +264,7 @@ export default function VisitorCameraPage() {
                 onClick={capturePhoto}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
               >
-                📸 Chụp
+                Chụp
               </button>
               <button
                 onClick={stopCamera}
@@ -281,13 +281,11 @@ export default function VisitorCameraPage() {
               {/* Notes */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Ghi chú (Khách đến gặp ai? Mục đích?)
+                  Ghi chú (Khách đến gặp ai? Mục đích gì?)
                 </label>
                 <textarea
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="VD: Khách đến gặp phòng HR - Phỏng vấn ứng viên"
-                  rows={3}
+                  onChange={(e) => setNotes(e.target.value)}                  rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
                 />
               </div>
@@ -299,14 +297,14 @@ export default function VisitorCameraPage() {
                   disabled={isUploading}
                   className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold disabled:opacity-50"
                 >
-                  {isUploading ? 'Đang lưu...' : '💾 Lưu ảnh'}
+                  {isUploading ? 'Đang lưu...' : 'Lưu ảnh'}
                 </button>
                 <button
                   onClick={retakePhoto}
                   disabled={isUploading}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition disabled:opacity-50"
                 >
-                  🔄 Chụp lại
+                  Chụp lại
                 </button>
               </div>
             </div>
@@ -316,13 +314,13 @@ export default function VisitorCameraPage() {
         {/* RIGHT: PHOTO LIST */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">📂 Lịch sử ảnh</h2>
+            <h2 className="text-xl font-bold text-gray-800">Lịch sử ảnh</h2>
             <button
               onClick={loadPhotos}
               disabled={isLoadingPhotos}
               className="text-sm text-cyan-600 hover:text-cyan-700 font-semibold"
             >
-              {isLoadingPhotos ? 'Đang tải...' : '🔄 Tải lại'}
+              {isLoadingPhotos ? 'Đang tải...' : 'Tải lại'}
             </button>
           </div>
 
