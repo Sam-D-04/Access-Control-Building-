@@ -130,38 +130,22 @@ router.get('/access/stats', authenticateToken, accessController.getStats);
 
 
 // VISITOR ROUTES - /api/visitors
-router.post('/visitors/capture',
-    authenticateToken,
-    requireRole('admin', 'security'),
-    visitorController.captureVisitorPhoto
-);
+// POST - Chụp ảnh check-in (Base64)
+router.post('/visitors/capture', authenticateToken, requireRole('admin', 'security'), visitorController.captureVisitorPhoto);
 
-router.get('/visitors/photos',
-    authenticateToken,
-    requireRole('admin', 'security'),
-    visitorController.getVisitorPhotos
-);
+// GET - Lấy danh sách (có filter: date, start_time, end_time)
+router.get('/visitors/photos', authenticateToken, requireRole('admin', 'security'), visitorController.getVisitorPhotos);
 
-router.get('/visitors/photos/:id',
-    authenticateToken,
-    requireRole('admin', 'security'),
-    visitorController.getVisitorPhotoById
-);
+// GET - Lấy 1 ảnh theo ID
+router.get('/visitors/photos/:id', authenticateToken, requireRole('admin', 'security'), visitorController.getVisitorPhotoById);
 
-router.delete('/visitors/photos/:id',
-    authenticateToken,
-    requireRole('admin'),
-    visitorController.deleteVisitorPhoto
-);
+// DELETE - Xóa ảnh (admin only)
+router.delete('/visitors/photos/:id', authenticateToken, requireRole('admin'), visitorController.deleteVisitorPhoto);
 
-router.put('/visitors/photos/:id/checkout',
-    authenticateToken,
-    requireRole('admin', 'security'),
-    visitorController.checkoutVisitor
-);
-router.get('/visitors/stats', 
-    authenticateToken, 
-    requireRole('admin', 'security'), 
-    visitorController.getVisitorStats
-);
+// PUT - Checkout (Base64)
+router.put('/visitors/photos/:id/checkout', authenticateToken, requireRole('admin', 'security'), visitorController.checkoutVisitor);
+
+// GET - Thống kê (có filter: date)
+router.get('/visitors/stats', authenticateToken, requireRole('admin', 'security'), visitorController.getVisitorStats);
+
 module.exports = router;
