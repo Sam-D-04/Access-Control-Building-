@@ -260,7 +260,7 @@ export default function VisitorCameraPage() {
       }
 
       const queryString = params.length > 0 ? `?${params.join('&')}` : ''
-      
+
       const url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos${queryString}`
 
       const response = await axios.get(url, {
@@ -497,13 +497,7 @@ export default function VisitorCameraPage() {
                 return (
                   <div key={photo.id} className={`border rounded-lg p-3 flex gap-3 transition ${checkoutId === photo.id ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' : isCheckedOut ? 'border-gray-200 bg-gray-50' : 'border-gray-200 hover:border-cyan-300'}`}>
                     <div className="flex flex-col gap-2">
-                        <div className="relative group">
-                            <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                                <img src={photo.photo_path} alt="Check-in" className="w-full h-full object-cover" />
-                            </div>
-                            <span className="absolute bottom-0 left-0 w-full bg-black bg-opacity-60 text-white text-[10px] text-center py-0.5">CHECK IN</span>
-                        </div>
-                        {isCheckedOut && photo.checkout_photo_path && (
+                      {isCheckedOut && photo.checkout_photo_path && (
                             <div className="relative group animate-fadeIn">
                                 <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                                     <img src={photo.checkout_photo_path} alt="Check-out" className="w-full h-full object-cover" />
@@ -511,6 +505,13 @@ export default function VisitorCameraPage() {
                                 <span className="absolute bottom-0 left-0 w-full bg-red-600 bg-opacity-80 text-white text-[10px] text-center py-0.5">CHECK OUT</span>
                             </div>
                         )}
+                        <div className="relative group">
+                            <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                <img src={photo.photo_path} alt="Check-in" className="w-full h-full object-cover" />
+                            </div>
+                            <span className="absolute bottom-0 left-0 w-full bg-black bg-opacity-60 text-white text-[10px] text-center py-0.5">CHECK IN</span>
+                        </div>
+                        
                     </div>
                     <div className="flex-1 flex flex-col justify-between">
                       <div className="text-sm text-gray-800 whitespace-pre-line break-words">
