@@ -108,7 +108,9 @@ async function checkoutVisitor(req, res, next) {
 
         const sql = `
             UPDATE visitor_photos 
-            SET photo_path = ?, notes = ?
+            SET checkout_photo_path = ?, 
+                notes = ?,
+                is_checkout = 1
             WHERE id = ?
         `;
 
@@ -120,11 +122,42 @@ async function checkoutVisitor(req, res, next) {
         next(error);
     }
 }
+// GET /api/visitors/stats - Thống kê khách trong ngày
+async function getVisitorStats(req, res, next) {
+    try {
+        // Query đếm tổng và đếm số người đã checkout trong ngày hôm nay (CURDATE)
+        const sql = `
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out
+            FROM visitor_photos
+            WHERE DATE(captured_at) = CURDATE()
+        `;
 
+        const result = await getOneRow(sql);
+
+        const total = result.total || 0;
+        const checked_out = parseInt(result.checked_out || 0);
+        const inside = total - checked_out;
+
+        res.json({
+            success: true,
+            data: {
+                total,
+                checked_out,
+                inside
+            }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+}
 module.exports = {
     captureVisitorPhoto,
     getVisitorPhotos,
     getVisitorPhotoById,
     deleteVisitorPhoto,
-    checkoutVisitor 
+    checkoutVisitor,
+    getVisitorStats
 };

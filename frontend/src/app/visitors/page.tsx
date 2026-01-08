@@ -8,9 +8,17 @@ import axios from 'axios'
 
 interface VisitorPhoto {
   id: number
-  photo_path: string
+  photo_path: string // Ảnh vào
+  checkout_photo_path: string | null
+  is_checkout: number | boolean
   notes: string | null
   captured_at: string
+}
+
+interface VisitorStats {
+  total: number
+  checked_out: number
+  inside: number
 }
 
 export default function VisitorCameraPage() {
@@ -18,9 +26,13 @@ export default function VisitorCameraPage() {
   const { user, isAuthenticated, checkAuth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(true)
 
-  const [checkoutId, setCheckoutId] = useState<number | null>(null) // Lưu ID của người đang checkout
-  const topRef = useRef<HTMLDivElement>(null) // Để cuộn trang lên camera
+  const [checkoutId, setCheckoutId] = useState<number | null>(null) 
+  const topRef = useRef<HTMLDivElement>(null)
   
+
+  const [stats, setStats] = useState<VisitorStats>({ total: 0, checked_out: 0, inside: 0 })
+
+
   // Camera states
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -124,6 +136,21 @@ const cancelCheckout = () => {
     stopCamera()
   }
 
+//thống kê 
+  const loadStats = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/visitors/stats`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      )
+      setStats(response.data.data)
+    } catch (error) {
+      console.error('Load stats error:', error)
+    }
+  }
+
+
 // --- HÀM XỬ LÝ CHECKOUT ---
   const handleStartCheckout = (photo: VisitorPhoto) => {
     setCheckoutId(photo.id)
@@ -189,6 +216,7 @@ const cancelCheckout = () => {
       setDob('')
       setReason('')
       loadPhotos() 
+      loadStats()
 
     } catch (error: any) {
       console.error('Action error:', error)
@@ -219,6 +247,7 @@ const cancelCheckout = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadPhotos()
+      loadStats()
     }
   }, [isAuthenticated])
 
@@ -236,6 +265,7 @@ const cancelCheckout = () => {
 
       alert('Đã xóa ảnh')
       loadPhotos()
+      loadStats()
     } catch (error: any) {
       alert(error.response?.data?.message || 'Lỗi khi xóa ảnh')
     }
@@ -265,7 +295,21 @@ const cancelCheckout = () => {
     <DashboardLayout title="Chụp ảnh khách lạ">
 
       <div ref={topRef}></div> 
-
+        {/* THỐNG KÊ  */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+            <div className="text-gray-500 text-sm font-semibold uppercase">Tổng khách hôm nay</div>
+            <div className="text-3xl font-bold text-blue-600 mt-1">{stats.total}</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-orange-500">
+            <div className="text-gray-500 text-sm font-semibold uppercase">Đang ở trong tòa nhà</div>
+            <div className="text-3xl font-bold text-orange-600 mt-1">{stats.inside}</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
+            <div className="text-gray-500 text-sm font-semibold uppercase">Đã ra về</div>
+            <div className="text-3xl font-bold text-green-600 mt-1">{stats.checked_out}</div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* ================= LEFT: CAMERA & FORM ================= */}
@@ -365,7 +409,7 @@ const cancelCheckout = () => {
                   className={`flex-1 px-6 py-3 text-white rounded-lg transition font-bold text-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
                       checkoutId 
                         ? 'bg-orange-600 hover:bg-orange-700' // Màu cam cho Checkout
-                        : 'bg-gradient-to-r from-cyan-600 to-red-600 hover:from-cyan-700 hover:to-red-700' // Màu gradient cho Check-in
+                        : 'bg-gradient-to-r from-cyan-600 to-red-600 hover:from-cyan-700 hover:to-red-700' 
                   }`}
                 >
                   {isUploading ? 'Đang xử lý...' : (checkoutId ? 'XÁC NHẬN CHECKOUT' : 'LƯU THÔNG TIN')}
@@ -402,77 +446,104 @@ const cancelCheckout = () => {
                 <p>Chưa có dữ liệu nào trong ngày</p>
               </div>
             ) : (
-              photos.map((photo) => (
-                <div 
-                    key={photo.id} 
-                    className={`border rounded-lg p-3 flex gap-3 transition-all duration-200 ${
-                        checkoutId === photo.id 
-                            ? 'border-orange-500 bg-orange-50 shadow-md ring-2 ring-orange-200' 
-                            : 'border-gray-200 hover:border-cyan-300 hover:shadow-sm'
-                    }`}
-                >
-                  {/* Ảnh nhỏ */}
-                  <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                      <img src={photo.photo_path} alt="Visitor" className="w-full h-full object-cover" />
-                  </div>
-                  
-                  {/* Thông tin chi tiết */}
-                  <div className="flex-1 flex flex-col justify-between">
-                    {/* Nội dung text */}
-                    <div className="text-sm text-gray-800 whitespace-pre-line break-words">
-                        {photo.notes ? (
-                            photo.notes.split(' - ').map((part, index) => {
-                                const [label, ...rest] = part.split(':');
-                                const content = rest.join(':');
-                                return (
-                                  <div key={index} className="mb-0.5">
-                                    <span className="font-bold text-cyan-700 text-xs uppercase mr-1">
-                                        {label}:
-                                    </span>
-                                    <span className="text-gray-900">{content}</span>
-                                  </div>
-                                );
-                            })
-                        ) : ( 
-                            <span className="text-gray-400 italic text-xs">Không có ghi chú</span> 
+              photos.map((photo) => {
+                // Ép kiểu boolean cho chắc chắn (vì DB trả về 0/1)
+                const isCheckedOut = Boolean(photo.is_checkout);
+
+                return (
+                  <div 
+                      key={photo.id} 
+                      className={`border rounded-lg p-3 flex gap-3 transition-all duration-200 ${
+                          checkoutId === photo.id 
+                              ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-200' 
+                              : isCheckedOut 
+                                ? 'border-gray-200 bg-gray-50' 
+                                : 'border-gray-200 hover:border-cyan-300'
+                      }`}
+                  >
+                    {/* --- KHU VỰC HIỂN THỊ ẢNH --- */}
+                    <div className="flex flex-col gap-2">
+                        {/* Ảnh vào (Luôn có) */}
+                        <div className="relative group">
+                            <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                <img src={photo.photo_path} alt="Check-in" className="w-full h-full object-cover" />
+                            </div>
+                            <span className="absolute bottom-0 left-0 w-full bg-black bg-opacity-60 text-white text-[10px] text-center py-0.5">
+                                CHECK IN
+                            </span>
+                        </div>
+
+                        {/* Ảnh ra (Chỉ hiện khi đã checkout) */}
+                        {isCheckedOut && photo.checkout_photo_path && (
+                            <div className="relative group animate-fadeIn">
+                                <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                    <img src={photo.checkout_photo_path} alt="Check-out" className="w-full h-full object-cover" />
+                                </div>
+                                <span className="absolute bottom-0 left-0 w-full bg-red-600 bg-opacity-80 text-white text-[10px] text-center py-0.5">
+                                    CHECK OUT
+                                </span>
+                            </div>
                         )}
                     </div>
                     
-                    {/* Footer của item: Ngày giờ & Nút bấm */}
-                    <div className="pt-2 mt-2 border-t border-gray-100 flex justify-between items-end">
-                        <div className="text-xs text-gray-400 font-medium">
-                          {new Date(photo.captured_at).toLocaleString('vi-VN')}
-                        </div>
+                    {/* --- THÔNG TIN CHI TIẾT --- */}
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div className="text-sm text-gray-800 whitespace-pre-line break-words">
+                          {photo.notes ? (
+                              photo.notes.split(' - ').map((part, index) => {
+                                  // Highlight dòng thời gian checkout
+                                  if (part.includes('CHECKOUT')) {
+                                      return (
+                                          <div key={index} className="mt-2 pt-1 border-t border-dashed border-gray-300 text-red-600 font-bold text-xs bg-red-50 p-1 rounded">
+                                              {part}
+                                          </div>
+                                      )
+                                  }
+                                  const [label, ...rest] = part.split(':');
+                                  return (
+                                    <div key={index} className="mb-0.5">
+                                      <span className="font-bold text-cyan-700 text-xs uppercase mr-1">{label}:</span>
+                                      <span className="text-gray-900">{rest.join(':')}</span>
+                                    </div>
+                                  );
+                              })
+                          ) : <span className="text-gray-400 italic text-xs">Không có ghi chú</span>}
+                      </div>
+                      
+                      <div className="pt-2 mt-2 border-t border-gray-100 flex justify-between items-end">
+                          <div className="text-xs text-gray-400 font-medium">
+                            Vào: {new Date(photo.captured_at).toLocaleString('vi-VN')}
+                          </div>
 
-                        <div className="flex gap-3">
-                            {/* Nút Xóa (Chỉ admin) */}
-                            {user.role === 'admin' && (
-                                <button 
-                                    onClick={() => deletePhoto(photo.id)} 
-                                    className="text-gray-400 hover:text-red-600 text-xs font-semibold transition"
-                                    title="Xóa bản ghi này"
-                                >
-                                    Xóa
-                                </button>
-                            )}
-                            
-                            {/* Nút Check Out */}
-                            <button 
-                                onClick={() => handleStartCheckout(photo)}
-                                disabled={!!checkoutId} // Disable nếu đang checkout người khác
-                                className={`text-xs font-bold px-2 py-1 rounded transition ${
-                                    checkoutId === photo.id 
-                                        ? 'bg-orange-200 text-orange-800 cursor-default'
-                                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800'
-                                }`}
-                            >
-                                {checkoutId === photo.id ? 'Đang chọn...' : 'Check Out ➜'}
-                            </button>
-                        </div>
+                          <div className="flex gap-2">
+                              {user.role === 'admin' && (
+                                  <button onClick={() => deletePhoto(photo.id)} className="text-gray-400 hover:text-red-600 text-xs font-semibold px-2">Xóa</button>
+                              )}
+                              
+                              {/* NÚT CHECK OUT / TRẠNG THÁI */}
+                              {!isCheckedOut ? (
+                                  <button 
+                                      onClick={() => handleStartCheckout(photo)}
+                                      disabled={!!checkoutId} 
+                                      className={`text-xs font-bold px-3 py-1.5 rounded transition shadow-sm ${
+                                          checkoutId === photo.id 
+                                              ? 'bg-orange-200 text-orange-800 cursor-not-allowed'
+                                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                                      }`}
+                                  >
+                                      {checkoutId === photo.id ? 'Đang chụp...' : 'Check Out ➜'}
+                                  </button>
+                              ) : (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded border border-green-200">
+                                      Hoàn tất
+                                  </span>
+                              )}
+                          </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

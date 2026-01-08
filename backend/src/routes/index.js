@@ -159,4 +159,9 @@ router.put('/visitors/photos/:id/checkout',
     requireRole('admin', 'security'),
     visitorController.checkoutVisitor
 );
+router.get('/visitors/stats', 
+    authenticateToken, 
+    requireRole('admin', 'security'), 
+    visitorController.getVisitorStats
+);
 module.exports = router;
