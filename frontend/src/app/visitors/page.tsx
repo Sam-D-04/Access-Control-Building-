@@ -8,7 +8,7 @@ import axios from 'axios'
 
 interface VisitorPhoto {
   id: number
-  photo_path: string // Ảnh vào
+  photo_path: string
   checkout_photo_path: string | null
   is_checkout: number | boolean
   notes: string | null
@@ -531,11 +531,11 @@ const cancelCheckout = () => {
                                               : 'bg-blue-600 text-white hover:bg-blue-700'
                                       }`}
                                   >
-                                      {checkoutId === photo.id ? 'Đang chụp...' : 'Check Out ➜'}
+                                      {checkoutId === photo.id ? 'Đang chụp...' : 'Check Out'}
                                   </button>
                               ) : (
                                   <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded border border-green-200">
-                                      Hoàn tất
+                                      Đã checkout
                                   </span>
                               )}
                           </div>
