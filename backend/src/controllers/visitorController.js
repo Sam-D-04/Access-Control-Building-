@@ -86,7 +86,6 @@ async function getVisitorPhotos(req, res, next) {
             : '';
 
         // ===== QUERY DANH SÁCH =====
-        // Note: LIMIT và OFFSET không dùng ? để tránh lỗi MySQL prepared statement
         const sql = whereSQL
             ? `SELECT * FROM visitor_photos ${whereSQL} ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`
             : `SELECT * FROM visitor_photos ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
@@ -153,23 +152,48 @@ async function getVisitorPhotoById(req, res, next) {
 
 async function checkoutVisitor(req, res, next) {
     try {
-        const { id } = req.params;      
-        const { photo } = req.body;      
+        const { id } = req.params;
+        const { photo } = req.body;
 
         if (!photo) {
             throw new CustomError('Cần chụp ảnh để checkout', 400);
         }
 
-        // UPDATE 3 cột
+        // Lấy thông tin visitor hiện tại
+        const visitor = await getOneRow('SELECT notes FROM visitor_photos WHERE id = ?', [id]);
+
+        if (!visitor) {
+            throw new CustomError('Không tìm thấy visitor', 404);
+        }
+
+        // Tạo timestamp checkout
+        const checkoutTime = new Date().toLocaleString('vi-VN', {
+            timeZone: 'Asia/Ha_Noi',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        // Thêm thông tin checkout vào notes
+        const updatedNotes = visitor.notes
+            ? `${visitor.notes} - CHECKOUT: ${checkoutTime}`
+            : `CHECKOUT: ${checkoutTime}`;
+
+        // UPDATE với notes mới
         const sql = `
             UPDATE visitor_photos
-            SET checkout_photo_path = ?,    -- Lưu ảnh ra
-                is_checkout = 1,             -- Đánh dấu đã checkout
-                time_out = NOW()             -- Lưu thời gian checkout
+            SET checkout_photo_path = ?,
+                is_checkout = 1,
+                time_out = NOW(),
+                notes = ?
             WHERE id = ?
         `;
 
-        await executeQuery(sql, [photo, id]);
+        await executeQuery(sql, [photo, updatedNotes, id]);
 
         res.json({ success: true, message: 'Checkout thành công' });
 
