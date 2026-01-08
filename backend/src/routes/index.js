@@ -8,7 +8,9 @@ const doorController = require('../controllers/doorController');
 const userController = require('../controllers/userController');
 const cardController = require('../controllers/cardController');
 const departmentController = require('../controllers/departmentController');
-const guest = require('../controllers/guest');
+const visitorController = require('../controllers/visitorController');
+
+
 // Import middlewares
 const { authenticateToken, requireRole } = require('../middlewares/auth');
 
@@ -127,32 +129,31 @@ router.get('/access/stats', authenticateToken, accessController.getStats);
 
 
 
-//guest
-router.post('/guest/capture',
+// VISITOR ROUTES - /api/visitors (CHỤP ẢNH KHÁCH LẠ)
+router.post('/visitors/capture',
     authenticateToken,
     requireRole('admin', 'security'),
-    guestController.upload.single('photo'),
-    guestController.captureguestPhoto
+    visitorController.upload.single('photo'),
+    visitorController.captureVisitorPhoto
 );
 
-router.get('/guest/photos',
+router.get('/visitors/photos',
     authenticateToken,
     requireRole('admin', 'security'),
-    guestController.getguestPhotos
+    visitorController.getVisitorPhotos
 );
 
-router.get('/guest/photos/:id',
+router.get('/visitors/photos/:id',
     authenticateToken,
     requireRole('admin', 'security'),
-    guestController.getguestPhotoById
+    visitorController.getVisitorPhotoById
 );
 
-router.delete('/guest/photos/:id',
+router.delete('/visitors/photos/:id',
     authenticateToken,
     requireRole('admin'),
-    guestController.deleteguestPhoto
+    visitorController.deleteVisitorPhoto
 );
-
 
 
 module.exports = router;

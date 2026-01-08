@@ -1,3 +1,7 @@
+// ============================================
+// BACKEND API - Visitor Camera
+// File: backend/src/controllers/visitorController.js
+// ============================================
 
 const { executeQuery, getOneRow } = require('../config/database');
 const { CustomError } = require('../middlewares/errorHandler');
@@ -5,9 +9,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 
+// ============================================
+// MULTER CONFIG - Upload ảnh
+// ============================================
 
-// Tạo folder nếu chưa có
-const uploadDir = path.join(__dirname, '../../uploads/guest');
+// Tạo folder uploads/visitors nếu chưa có
+const uploadDir = path.join(__dirname, '../../uploads/visitors');
 fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
 
 // Config multer
@@ -24,7 +31,7 @@ const storage = multer.diskStorage({
     }
 });
 
-// Filter 
+// Filter chỉ cho phép ảnh
 const fileFilter = (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -39,14 +46,16 @@ const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024 
+        fileSize: 5 * 1024 * 1024 // 5MB
     }
 });
 
-
+// ============================================
 // API ENDPOINTS
+// ============================================
+
 // POST /api/visitors/capture - Upload ảnh khách lạ
-async function captureGuestPhoto(req, res, next) {
+async function captureVisitorPhoto(req, res, next) {
     try {
         // req.file được tạo bởi multer middleware
         if (!req.file) {
@@ -78,7 +87,7 @@ async function captureGuestPhoto(req, res, next) {
             WHERE vp.id = ?
         `, [result.insertId]);
 
-        console.log('Guest photo captured:', photo.id);
+        console.log('Visitor photo captured:', photo.id);
 
         res.status(201).json({
             success: true,
@@ -96,7 +105,7 @@ async function captureGuestPhoto(req, res, next) {
 }
 
 // GET /api/visitors/photos - Lấy danh sách ảnh
-async function getGuestPhotos(req, res, next) {
+async function getVisitorPhotos(req, res, next) {
     try {
         const { limit = 20, offset = 0 } = req.query;
 
@@ -128,7 +137,7 @@ async function getGuestPhotos(req, res, next) {
 }
 
 // GET /api/visitors/photos/:id - Lấy 1 ảnh
-async function getGuestPhotoById(req, res, next) {
+async function getVisitorPhotoById(req, res, next) {
     try {
         const { id } = req.params;
 
@@ -157,7 +166,7 @@ async function getGuestPhotoById(req, res, next) {
 }
 
 // DELETE /api/visitors/photos/:id - Xóa ảnh
-async function deleteGuestPhoto(req, res, next) {
+async function deleteVisitorPhoto(req, res, next) {
     try {
         const { id } = req.params;
 
@@ -187,8 +196,8 @@ async function deleteGuestPhoto(req, res, next) {
 
 module.exports = {
     upload, // Export middleware
-    captureGuestPhoto,
-    getGuestPhotos,
-    getGuestPhotoById,
-    deleteGuestPhoto
+    captureVisitorPhoto,
+    getVisitorPhotos,
+    getVisitorPhotoById,
+    deleteVisitorPhoto
 };

@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -7,7 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout'
 import { useAuthStore } from '@/store/authStore'
 import axios from 'axios'
 
-interface GuestPhoto {
+interface VisitorPhoto {
   id: number
   photo_path: string
   notes: string | null
@@ -17,7 +16,7 @@ interface GuestPhoto {
   captured_at: string
 }
 
-export default function GuestCameraPage() {
+export default function VisitorCameraPage() {
   const router = useRouter()
   const { user, isAuthenticated, checkAuth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(true)
@@ -31,7 +30,7 @@ export default function GuestCameraPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   // Photo list states
-  const [photos, setPhotos] = useState<GuestPhoto[]>([])
+  const [photos, setPhotos] = useState<VisitorPhoto[]>([])
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false)
 
   // Check auth
@@ -49,6 +48,9 @@ export default function GuestCameraPage() {
     }
   }, [isAuthenticated, isLoading, user, router])
 
+  // ============================================
+  // CAMERA FUNCTIONS
+  // ============================================
 
   // Bật camera
   const startCamera = async () => {
@@ -341,7 +343,7 @@ export default function GuestCameraPage() {
                   {/* Photo */}
                   <img
                     src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/${photo.photo_path}`}
-                    alt="Guest"
+                    alt="Visitor"
                     className="w-full h-48 object-cover rounded-lg mb-3"
                   />
 
