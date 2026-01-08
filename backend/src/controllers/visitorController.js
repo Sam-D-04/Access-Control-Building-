@@ -92,29 +92,21 @@ async function getVisitorPhotoById(req, res, next) {
 async function checkoutVisitor(req, res, next) {
     try {
         const { id } = req.params;
-        const { photo } = req.body; 
+        const { photo } = req.body;
 
         if (!photo) {
             throw new CustomError('Cần chụp ảnh để checkout', 400);
         }
-
-        // 1. Lấy thông tin cũ để giữ lại ghi chú cũ
-        const oldRecord = await getOneRow('SELECT notes FROM visitor_photos WHERE id = ?', [id]);
-        if (!oldRecord) throw new CustomError('Không tìm thấy bản ghi', 404);
-
-        //note mới = note cũ + tgian out
-        const checkoutTime = new Date().toLocaleString('vi-VN');
-        const newNotes = `${oldRecord.notes || ''} \nCHECKOUT lúc: ${checkoutTime}`;
-
+    
         const sql = `
             UPDATE visitor_photos 
             SET checkout_photo_path = ?, 
-                notes = ?,
-                is_checkout = 1
+                is_checkout = 1,
+                time_out = NOW()s
             WHERE id = ?
         `;
 
-        await executeQuery(sql, [photo, newNotes, id]);
+        await executeQuery(sql, [photo, id]);
 
         res.json({ success: true, message: 'Checkout thành công' });
 
@@ -125,13 +117,11 @@ async function checkoutVisitor(req, res, next) {
 // GET /api/visitors/stats - Thống kê khách trong ngày
 async function getVisitorStats(req, res, next) {
     try {
-        // Query đếm tổng và đếm số người đã checkout trong ngày hôm nay (CURDATE)
         const sql = `
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out
             FROM visitor_photos
-            WHERE DATE(captured_at) = CURDATE()
         `;
 
         const result = await getOneRow(sql);

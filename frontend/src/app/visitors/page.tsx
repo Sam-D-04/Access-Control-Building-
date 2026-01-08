@@ -13,6 +13,7 @@ interface VisitorPhoto {
   is_checkout: number | boolean
   notes: string | null
   captured_at: string
+  time_out: string | null
 }
 
 interface VisitorStats {
