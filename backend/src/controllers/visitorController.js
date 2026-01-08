@@ -86,13 +86,17 @@ async function getVisitorPhotos(req, res, next) {
             : '';
 
         // ===== QUERY DANH SÁCH =====
-        const sql = `SELECT * FROM visitor_photos ${whereSQL} ORDER BY captured_at DESC LIMIT ? OFFSET ?`;
+        const sql = whereSQL
+            ? `SELECT * FROM visitor_photos ${whereSQL} ORDER BY captured_at DESC LIMIT ? OFFSET ?`
+            : `SELECT * FROM visitor_photos ORDER BY captured_at DESC LIMIT ? OFFSET ?`;
         const sqlParams = [...whereParams, limitNum, offsetNum];
 
         const photos = await executeQuery(sql, sqlParams);
 
         // ===== ĐẾM TỔNG SỐ =====
-        const countSQL = `SELECT COUNT(*) as total FROM visitor_photos ${whereSQL}`;
+        const countSQL = whereSQL
+            ? `SELECT COUNT(*) as total FROM visitor_photos ${whereSQL}`
+            : `SELECT COUNT(*) as total FROM visitor_photos`;
         const countResult = await getOneRow(countSQL, whereParams);
 
         // ===== RESPONSE =====
