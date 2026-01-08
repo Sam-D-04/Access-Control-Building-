@@ -244,20 +244,24 @@ export default function VisitorCameraPage() {
     try {
       const token = localStorage.getItem('token')
 
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos`
+      const params = []
 
       if (filterStartDate) {
-        url += `&start_date=${filterStartDate}`
+        params.push(`start_date=${filterStartDate}`)
       }
       if (filterEndDate) {
-        url += `&end_date=${filterEndDate}`
+        params.push(`end_date=${filterEndDate}`)
       }
       if (filterStartTime) {
-        url += `&start_time=${filterStartTime}`
+        params.push(`start_time=${filterStartTime}`)
       }
       if (filterEndTime) {
-        url += `&end_time=${filterEndTime}`
+        params.push(`end_time=${filterEndTime}`)
       }
+
+      const queryString = params.length > 0 ? `?${params.join('&')}` : ''
+      
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos${queryString}`
 
       const response = await axios.get(url, {
         headers: { 'Authorization': `Bearer ${token}` }
