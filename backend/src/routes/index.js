@@ -154,5 +154,9 @@ router.delete('/visitors/photos/:id',
     visitorController.deleteVisitorPhoto
 );
 
-
+router.put('/visitors/photos/:id/checkout',
+    authenticateToken,
+    requireRole('admin', 'security'),
+    visitorController.checkoutVisitor
+);
 module.exports = router;

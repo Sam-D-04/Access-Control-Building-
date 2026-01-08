@@ -88,10 +88,43 @@ async function getVisitorPhotoById(req, res, next) {
         next(error);
     }
 }
+// PUT /api/visitors/photos/:id/checkout - Cập nhật ảnh checkout và thời gian
+async function checkoutVisitor(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { photo } = req.body; 
+
+        if (!photo) {
+            throw new CustomError('Cần chụp ảnh để checkout', 400);
+        }
+
+        // 1. Lấy thông tin cũ để giữ lại ghi chú cũ
+        const oldRecord = await getOneRow('SELECT notes FROM visitor_photos WHERE id = ?', [id]);
+        if (!oldRecord) throw new CustomError('Không tìm thấy bản ghi', 404);
+
+        //note mới = note cũ + tgian out
+        const checkoutTime = new Date().toLocaleString('vi-VN');
+        const newNotes = `${oldRecord.notes || ''} \nCHECKOUT lúc: ${checkoutTime}`;
+
+        const sql = `
+            UPDATE visitor_photos 
+            SET photo_path = ?, notes = ?
+            WHERE id = ?
+        `;
+
+        await executeQuery(sql, [photo, newNotes, id]);
+
+        res.json({ success: true, message: 'Checkout thành công' });
+
+    } catch (error) {
+        next(error);
+    }
+}
 
 module.exports = {
     captureVisitorPhoto,
     getVisitorPhotos,
+    getVisitorPhotoById,
     deleteVisitorPhoto,
-    getVisitorPhotoById
+    checkoutVisitor 
 };
