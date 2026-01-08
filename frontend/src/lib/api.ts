@@ -104,6 +104,16 @@ export const departmentAPI = {
   getById: (id: number) => api.get(`/departments/${id}`),
 }
 
+//GUEST 
+
+export const guestAPI = {
+ getAll: () => api.get('/guest'),
+  getById: (id: number) => api.get(`/guest/${id}`),
+}
+
+
+
+
 
 // ACCESS CONTROL APIs
 
