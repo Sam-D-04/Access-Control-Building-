@@ -24,9 +24,11 @@ export default function VisitorCameraPage() {
   const [isCameraOn, setIsCameraOn] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   
-  // Input states
-  const [notes, setNotes] = useState('')
-  const [visitorInfo, setVisitorInfo] = useState('') // <--- THÊM STATE MỚI
+  // FORM 
+  const [fullName, setFullName] = useState('')
+  const [idCard, setIdCard] = useState('')
+  const [dob, setDob] = useState('')
+  const [reason, setReason] = useState('')
   
   const [isUploading, setIsUploading] = useState(false)
 
@@ -96,30 +98,47 @@ export default function VisitorCameraPage() {
     }
   }
 
-  // Chụp lại
+  // Chụp lại (Reset form)
   const retakePhoto = () => {
     setCapturedImage(null)
-    setNotes('')
-    setVisitorInfo('') // <--- RESET STATE MỚI
+    // Reset các ô nhập liệu
+    setFullName('')
+    setIdCard('')
+    setDob('')
+    setReason('')
     startCamera()
   }
 
-  // Upload ảnh
+  // Upload ảnh & Gộp dữ liệu
   const uploadPhoto = async () => {
     if (!capturedImage) return
+
+    
+    if (!fullName || !idCard) {
+      alert('Vui lòng nhập ít nhất Họ tên và Số CCCD')
+      return
+    }
 
     setIsUploading(true)
 
     try {
       const token = localStorage.getItem('token')
-      
-      const finalNotes = `Khách: ${visitorInfo} - Ghi chú: ${notes}`.trim();
+     
+      // Tạo mảng chứa các phần thông tin, lọc bỏ các ô trống
+      const tt = []
+      if (fullName) tt.push(`Họ tên: ${fullName}`)
+      if (idCard) tt.push(`CCCD: ${idCard}`)
+      if (dob) tt.push(`Ngày sinh: ${dob}`)
+      if (reason) tt.push(`Lý do: ${reason}`)
+
+      // Nối lại thành 1 chuỗi string để lưu vào cột notes
+      const finalNotes = tt.join(' - '); 
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/visitors/capture`,
         {
             photo: capturedImage,
-            notes: finalNotes // <--- GỬI DỮ LIỆU ĐÃ GỘP
+            notes: finalNotes
         },
         {
           headers: {
@@ -129,12 +148,16 @@ export default function VisitorCameraPage() {
         }
       )
 
-      alert('Đã lưu ảnh thành công')
+      alert('Đã lưu thông tin khách thành công')
 
-      // Reset
+      // Reset toàn bộ
       setCapturedImage(null)
-      setNotes('')
-      setVisitorInfo('') // <--- RESET
+      setFullName('')
+      setIdCard('')
+      setDob('')
+      setReason('')
+      
+    
       loadPhotos()
 
     } catch (error: any) {
@@ -265,46 +288,66 @@ export default function VisitorCameraPage() {
             </div>
           )}
 
-          {/* Captured photo actions */}
+          {/* Captured photo actions - FORM NHẬP LIỆU */}
           {capturedImage && (
             <div className="space-y-4">
-              
-              {/* --- PHẦN THÊM MỚI: TEXTBOX NHẬP TÊN KHÁCH --- */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Thông tin khách (Tên / CCCD)
-                </label>
-                <input
-                  type="text"
-                  value={visitorInfo}
-                  onChange={(e) => setVisitorInfo(e.target.value)}
-                  placeholder="Nhập tên khách hoặc số thẻ..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-              {/* ------------------------------------------- */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Họ tên */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Họ và Tên *</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Nguyễn Văn A"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-cyan-500 text-sm"
+                  />
+                </div>
 
-              {/* Notes */}
+                {/* Số CCCD */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Số CCCD *</label>
+                  <input
+                    type="text"
+                    value={idCard}
+                    onChange={(e) => setIdCard(e.target.value)}
+                    placeholder="012345..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-cyan-500 text-sm"
+                  />
+                </div>
+
+                {/* Ngày sinh */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Ngày sinh</label>
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-cyan-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Lý do / Ghi chú */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Ghi chú (Mục đích, người cần gặp)
-                </label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Lý do / Ghi chú</label>
                 <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Gặp ai? Mục đích gì?"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-cyan-500 text-sm"
                 />
               </div>
 
               {/* Buttons */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={uploadPhoto}
                   disabled={isUploading}
                   className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold disabled:opacity-50"
                 >
-                  {isUploading ? 'Đang lưu...' : 'Lưu ảnh'}
+                  {isUploading ? 'Đang lưu...' : 'Lưu thông tin'}
                 </button>
                 <button
                   onClick={retakePhoto}
@@ -321,7 +364,7 @@ export default function VisitorCameraPage() {
         {/* RIGHT: PHOTO LIST */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Lịch sử ảnh</h2>
+            <h2 className="text-xl font-bold text-gray-800">Lịch sử khách</h2>
             <button
               onClick={loadPhotos}
               disabled={isLoadingPhotos}
@@ -334,31 +377,46 @@ export default function VisitorCameraPage() {
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
             {photos.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                <p>Chưa có ảnh nào</p>
+                <p>Chưa có dữ liệu nào</p>
               </div>
             ) : (
               photos.map((photo) => (
-                <div key={photo.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={photo.id} className="border border-gray-200 rounded-lg p-4 flex gap-4">
+                  {/* Ảnh nhỏ bên trái */}
                   <img
                     src={photo.photo_path}
                     alt="Visitor"
-                    className="w-full h-48 object-cover rounded-lg mb-3"
+                    className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
                   />
-                  <div className="space-y-2">
-                    {photo.notes && (
-                      <div className="text-sm text-gray-700 whitespace-pre-line">
-                        <span className="font-semibold">Chi tiết:</span> {photo.notes}
+                  
+                  {/* Thông tin bên phải */}
+                  <div className="flex-1 space-y-1">
+                    {photo.notes ? (
+                      <div className="text-sm text-gray-800 whitespace-pre-line break-words">
+                        {photo.notes.split(' - ').map((part, index) => (
+                          <div key={index} className="mb-1">
+                            {/* Tô đậm phần tiêu đề (ví dụ "Họ tên:") */}
+                            <span className="font-semibold text-cyan-700">
+                              {part.split(':')[0]}:
+                            </span>
+                            {part.split(':').slice(1).join(':')}
+                          </div>
+                        ))}
                       </div>
+                    ) : (
+                       <span className="text-gray-400 italic text-sm">Không có thông tin</span>
                     )}
-                    <div className="text-xs text-gray-500">
-                      <div>Thời gian: {new Date(photo.captured_at).toLocaleString('vi-VN')}</div>
+                    
+                    <div className="text-xs text-gray-500 pt-1 border-t mt-2">
+                      {new Date(photo.captured_at).toLocaleString('vi-VN')}
                     </div>
+
                     {user.role === 'admin' && (
                       <button
                         onClick={() => deletePhoto(photo.id)}
-                        className="w-full mt-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition"
+                        className="text-red-600 text-xs hover:underline mt-1"
                       >
-                        Xóa
+                        [Xóa bản ghi]
                       </button>
                     )}
                   </div>
