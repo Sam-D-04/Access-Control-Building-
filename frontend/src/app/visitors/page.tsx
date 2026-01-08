@@ -10,9 +10,6 @@
     id: number
     photo_path: string
     notes: string | null
-    captured_by: number
-    captured_by_name: string
-    captured_by_employee_id: string
     captured_at: string
   }
 
@@ -348,7 +345,6 @@
                       )}
 
                       <div className="text-xs text-gray-500">
-                        <div>Chụp bởi: <span className="font-semibold">{photo.captured_by_name}</span> ({photo.captured_by_employee_id})</div>
                         <div>Thời gian: {new Date(photo.captured_at).toLocaleString('vi-VN')}</div>
                       </div>
 

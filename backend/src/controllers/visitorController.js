@@ -83,22 +83,24 @@ async function captureVisitorPhoto(req, res, next) {
 async function getVisitorPhotos(req, res, next) {
     try {
         const { limit = 20, offset = 0 } = req.query;
-
-
+        const limitNum = parseInt(limit);
+        const offsetNum = parseInt(offset);
+        
+        
         const sql = `
             SELECT * FROM visitor_photos 
             ORDER BY captured_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT ${limitNum} OFFSET ${offsetNum}
         `;
 
-        const photos = await executeQuery(sql, [parseInt(limit), parseInt(offset)]);
+        const photos = await executeQuery(sql);
 
         res.json({
             success: true,
             data: photos,
             pagination: {
-                limit: parseInt(limit),
-                offset: parseInt(offset)
+                limit: limitNum,
+                offset: offsetNum
             }
         });
 
