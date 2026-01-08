@@ -101,47 +101,41 @@
 
     // Upload ảnh
     const uploadPhoto = async () => {
-      if (!capturedImage) return
+      if (!capturedImage) return // capturedImage chính là chuỗi base64 từ canvas.toDataURL()
 
-      setIsUploading(true)
+    setIsUploading(true)
 
-      try {
-        // Convert base64 to blob
-        const blob = await fetch(capturedImage).then(r => r.blob())
-
-        // Tạo FormData
-        const formData = new FormData()
-        formData.append('photo', blob, `visitor_${Date.now()}.jpg`)
-        formData.append('notes', notes)
-
-        // Upload
-        const token = localStorage.getItem('token')
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/visitors/capture`,
-          formData,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data'
-            }
+    try {
+      const token = localStorage.getItem('token')
+      
+      // Gửi JSON thay vì FormData
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/visitors/capture`,
+        {
+            photo: capturedImage, // Gửi thẳng chuỗi base64
+            notes: notes
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json' // Đổi thành JSON
           }
-        )
+        }
+      )
 
-        alert('Đã lưu ảnh thành công')
+      alert('Đã lưu ảnh thành công')
 
-        // Reset
-        setCapturedImage(null)
-        setNotes('')
+      // Reset
+      setCapturedImage(null)
+      setNotes('')
+      loadPhotos()
 
-        // Reload danh sách
-        loadPhotos()
-
-      } catch (error: any) {
-        console.error('Upload error:', error)
-        alert(error.response?.data?.message || 'Lỗi khi upload ảnh')
-      } finally {
-        setIsUploading(false)
-      }
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      alert(error.response?.data?.message || 'Lỗi khi lưu ảnh')
+    } finally {
+      setIsUploading(false)
+    }
     }
 
 
@@ -331,10 +325,10 @@
                   <div key={photo.id} className="border border-gray-200 rounded-lg p-4">
                     {/* Photo */}
                     <img
-                      src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}/${photo.photo_path}`}
-                      alt="Visitor"
-                      className="w-full h-48 object-cover rounded-lg mb-3"
-                    />
+                        src={photo.photo_path} 
+                        alt="Visitor"
+                        className="w-full h-48 object-cover rounded-lg mb-3"
+                        />
 
                     {/* Info */}
                     <div className="space-y-2">

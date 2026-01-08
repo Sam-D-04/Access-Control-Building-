@@ -25,8 +25,10 @@ app.use(cors({
     credentials: true
 }));
 
-// Serve static files (ảnh từ uploads folder)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 // Middleware log request đơn giản

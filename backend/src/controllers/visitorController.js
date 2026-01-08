@@ -1,80 +1,37 @@
 const { executeQuery, getOneRow } = require('../config/database');
 const { CustomError } = require('../middlewares/errorHandler');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
 
 
-
-const uploadDir = path.join(__dirname, '../../uploads/visitors');
-fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
-        const randomStr = Math.random().toString(36).substring(2, 8);
-        const ext = path.extname(file.originalname);
-        cb(null, `${timestamp}_${randomStr}${ext}`);
-    }
-});
-
-const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new CustomError('Chỉ chấp nhận file ảnh (jpg, png, webp)', 400), false);
-    }
-};
-
-const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 } 
-});
-
-
-// POST /api/visitors/capture - Upload ảnh khách lạ
+// POST /api/visitors/capture - Lưu ảnh Base64 vào DB
 async function captureVisitorPhoto(req, res, next) {
     try {
-        if (!req.file) {
-            throw new CustomError('Không tìm thấy file ảnh', 400);
+        // Nhận trực tiếp chuỗi base64 từ body
+        const { photo, notes } = req.body; 
+
+        if (!photo) {
+            throw new CustomError('Không tìm thấy dữ liệu ảnh', 400);
         }
 
-        const { notes } = req.body;
-       
-
-        // Đường dẫn relative từ backend root
-        const photoPath = `uploads/visitors/${req.file.filename}`;
-
-        // Lưu vào database 
+        // Lưu trực tiếp chuỗi Base64 vào cột photo_path
         const sql = `
             INSERT INTO visitor_photos (photo_path, notes)
             VALUES (?, ?)
         `;
 
-        const result = await executeQuery(sql, [photoPath, notes || null]);
+        // photo ở đây là chuỗi "data:image/jpeg;base64,..."
+        const result = await executeQuery(sql, [photo, notes || null]);
 
-        const photo = await getOneRow(`
+        const newPhoto = await getOneRow(`
             SELECT * FROM visitor_photos WHERE id = ?
         `, [result.insertId]);
 
-        console.log('Visitor photo captured:', photo.id);
-
         res.status(201).json({
             success: true,
-            message: 'Đã chụp và lưu ảnh thành công',
-            data: photo
+            message: 'Đã lưu ảnh thành công',
+            data: newPhoto
         });
 
     } catch (error) {
-        // Xóa file nếu có lỗi database
-        if (req.file) {
-            fs.unlink(req.file.path).catch(console.error);
-        }
         next(error);
     }
 }
@@ -85,8 +42,7 @@ async function getVisitorPhotos(req, res, next) {
         const { limit = 20, offset = 0 } = req.query;
         const limitNum = parseInt(limit);
         const offsetNum = parseInt(offset);
-        
-        
+
         const sql = `
             SELECT * FROM visitor_photos 
             ORDER BY captured_at DESC
@@ -98,35 +54,7 @@ async function getVisitorPhotos(req, res, next) {
         res.json({
             success: true,
             data: photos,
-            pagination: {
-                limit: limitNum,
-                offset: offsetNum
-            }
-        });
-
-    } catch (error) {
-        next(error);
-        console.error("Get photos error:", error.message);
-    }
-}
-
-// GET /api/visitors/photos/:id - Lấy 1 ảnh
-async function getVisitorPhotoById(req, res, next) {
-    try {
-        const { id } = req.params;
-
-        // Đã bỏ JOIN
-        const photo = await getOneRow(`
-            SELECT * FROM visitor_photos WHERE id = ?
-        `, [id]);
-
-        if (!photo) {
-            throw new CustomError('Không tìm thấy ảnh', 404);
-        }
-
-        res.json({
-            success: true,
-            data: photo
+            pagination: { limit: limitNum, offset: offsetNum }
         });
 
     } catch (error) {
@@ -134,39 +62,24 @@ async function getVisitorPhotoById(req, res, next) {
     }
 }
 
-// DELETE /api/visitors/photos/:id - Xóa ảnh
+//xóa 
 async function deleteVisitorPhoto(req, res, next) {
     try {
         const { id } = req.params;
-
-        // Lấy thông tin ảnh để xóa file
         const photo = await getOneRow('SELECT * FROM visitor_photos WHERE id = ?', [id]);
+        if (!photo) throw new CustomError('Không tìm thấy ảnh', 404);
 
-        if (!photo) {
-            throw new CustomError('Không tìm thấy ảnh', 404);
-        }
-
-        // Xóa record trong DB
         await executeQuery('DELETE FROM visitor_photos WHERE id = ?', [id]);
-
-        // Xóa file vật lý
-        const filePath = path.join(__dirname, '../../', photo.photo_path);
-        fs.unlink(filePath).catch(console.error);
-
-        res.json({
-            success: true,
-            message: 'Đã xóa ảnh thành công'
-        });
-
+        
+        
+        res.json({ success: true, message: 'Đã xóa ảnh thành công' });
     } catch (error) {
         next(error);
     }
 }
 
 module.exports = {
-    upload,
     captureVisitorPhoto,
     getVisitorPhotos,
-    getVisitorPhotoById,
     deleteVisitorPhoto
 };
