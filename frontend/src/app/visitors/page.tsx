@@ -502,7 +502,7 @@ export default function VisitorCameraPage() {
                                 <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                                     <img src={photo.checkout_photo_path} alt="Check-out" className="w-full h-full object-cover" />
                                 </div>
-                                <span className="absolute bottom-0 left-0 w-full bg-red-600 bg-opacity-80 text-white text-[10px] text-center py-0.5">CHECK OUT</span>
+                                <span className="absolute bottom-0 left-0 w-full bg-green-600 bg-opacity-80 text-white text-[10px] text-center py-0.5">CHECK OUT</span>
                             </div>
                         )}
                         <div className="relative group">
@@ -517,7 +517,7 @@ export default function VisitorCameraPage() {
                       <div className="text-sm text-gray-800 whitespace-pre-line break-words">
                           {photo.notes ? photo.notes.split(' - ').map((part, index) => {
                               if (part.includes('CHECKOUT')) {
-                                  return <div key={index} className="mt-2 pt-1 border-t border-dashed border-gray-300 text-red-600 font-bold text-xs bg-red-50 p-1 rounded">{part}</div>
+                                  return <div key={index} className="mt-2 pt-1 border-t border-dashed border-gray-300 text-green-600 font-bold text-xs bg-green-50 p-1 rounded">{part}</div>
                               }
                               const [label, ...rest] = part.split(':');
                               return <div key={index} className="mb-0.5"><span className="font-bold text-cyan-700 text-xs uppercase mr-1">{label}:</span><span className="text-gray-900">{rest.join(':')}</span></div>;
