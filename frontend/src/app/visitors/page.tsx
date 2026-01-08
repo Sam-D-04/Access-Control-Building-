@@ -244,7 +244,7 @@ export default function VisitorCameraPage() {
     try {
       const token = localStorage.getItem('token')
 
-      let url = `${process.env.NEXT_PUBLIC_API_URL}`
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos`
 
       if (filterStartDate) {
         url += `&start_date=${filterStartDate}`
@@ -352,7 +352,7 @@ export default function VisitorCameraPage() {
       <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl shadow-md p-4 mb-6 border border-cyan-200">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-
+            
             <span className="font-bold text-gray-700">BỘ LỌC:</span>
           </div>
 
