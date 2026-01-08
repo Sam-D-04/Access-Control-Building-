@@ -106,7 +106,7 @@ async function getVisitorPhotos(req, res, next) {
             pagination: {
                 limit: limitNum,
                 offset: offsetNum,
-                total: countResult.total
+                total: countResult ? countResult.total : 0
             },
             filters: { start_date, end_date, start_time, end_time }
         });
@@ -204,13 +204,9 @@ async function getVisitorStats(req, res, next) {
             : '';
 
         // ===== QUERY THỐNG KÊ =====
-        const sql = `
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out
-            FROM visitor_photos
-            ${whereClause}
-        `;
+        const sql = whereClause
+            ? `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor_photos ${whereClause}`
+            : `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor_photos`;
 
         const result = await getOneRow(sql, params);
 
