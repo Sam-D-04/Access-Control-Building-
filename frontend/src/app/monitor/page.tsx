@@ -21,7 +21,7 @@ export default function MonitorPage() {
     total: 0,
     granted: 0,
     denied: 0,
-    lastUpdate: '--:--:--',
+    lastUpdate: '-- : -- : --',
   })
   const [isConnected, setIsConnected] = useState(false)
   const clientRef = useRef<MqttClient | null>(null)
@@ -56,10 +56,10 @@ export default function MonitorPage() {
       try {
         const log: AccessLog = JSON.parse(message.toString())
 
-        // Add new log to top
-        setLogs((prev) => [log, ...prev].slice(0, 20)) // Keep only 20 logs
+        // thêm log mới vào
+        setLogs((prev) => [log, ...prev].slice(0, 20)) // 20 logs
 
-        // Update stats
+        // Cập nhật status
         setStats((prev) => {
           const newStats = {
             total: prev.total + 1,

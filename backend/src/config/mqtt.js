@@ -4,7 +4,7 @@ require('dotenv').config();
 let mqttClient = null;
 let isConnected = false;
 
-// Hàm khởi tạo kết nối MQTT
+// khởi tạo kết nối MQTT
 function initMqttClient() {
     const brokerUrl = process.env.MQTT_BROKER;
 
@@ -19,27 +19,27 @@ function initMqttClient() {
         connectTimeout: 30 * 1000
     });
 
-    // Sự kiện: kết nối thành công
+    // Kết nối thành công
     mqttClient.on('connect', function() {
         isConnected = true;
         console.log('MQTT ket noi thanh cong');
     });
 
-    // Sự kiện: có lỗi kết nối
+    // lỗi kết nối
     mqttClient.on('error', function(error) {
         isConnected = false;
-        // Chỉ log lần đầu, không spam log
+ 
         if (!mqttClient.reconnecting) {
             console.log('MQTT chua ket noi duoc');
         }
     });
 
-    // Sự kiện: mất kết nối
+    // Mất kết nối
     mqttClient.on('offline', function() {
         isConnected = false;
     });
 
-    // Sự kiện: đang kết nối lại (không log để tránh spam)
+    // Đang kết nối lại
     mqttClient.on('reconnect', function() {
         // Không log gì
     });
@@ -47,7 +47,7 @@ function initMqttClient() {
     return mqttClient;
 }
 
-// Hàm publish message lên MQTT topic
+// publish message lên MQTT topic
 function publishMessage(topic, messageData) {
     // Kiểm tra client đã khởi tạo chưa
     if (!mqttClient) {
@@ -61,7 +61,7 @@ function publishMessage(topic, messageData) {
         return false;
     }
 
-    // Chuyển object thành JSON string nếu cần
+    // Chuyển object thành JSON string
     let payloadString = messageData;
     if (typeof messageData !== 'string') {
         payloadString = JSON.stringify(messageData);
@@ -79,7 +79,7 @@ function publishMessage(topic, messageData) {
     return true;
 }
 
-// Hàm subscribe topic và xử lý message nhận được
+// subscribe topic và xử lý message nhận được
 function subscribeToTopic(topic, callbackFunction) {
     // Kiểm tra client
     if (!mqttClient) {
@@ -110,7 +110,7 @@ function subscribeToTopic(topic, callbackFunction) {
     return true;
 }
 
-// Hàm đóng kết nối MQTT
+// đóng kết nối MQTT
 function closeMqttConnection() {
     if (mqttClient) {
         mqttClient.end();

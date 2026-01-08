@@ -92,7 +92,7 @@ async function createCardHandler(req, res, next) {
             if (expiredDate <= issuedDate) {
                 return res.status(400).json({
                     success: false,
-                    message: 'expired_at phải sau issued_at'
+                    message: 'Ngày hết hạn phải sau ngày tạo'
                 });
             }
         }
