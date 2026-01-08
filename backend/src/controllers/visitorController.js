@@ -88,30 +88,41 @@ async function getVisitorPhotoById(req, res, next) {
         next(error);
     }
 }
-// PUT /api/visitors/photos/:id/checkout - Cập nhật ảnh checkout và thời gian
-async function checkoutVisitor(req, res, next) {
+// GET /api/visitors/photos
+async function getVisitorPhotos(req, res) {
     try {
-        const { id } = req.params;
-        const { photo } = req.body;
+        const { limit = 20, offset = 0, startDate, endDate, search } = req.query;
+        const limitNum = parseInt(limit);
+        const offsetNum = parseInt(offset);
 
-        if (!photo) {
-            throw new CustomError('Cần chụp ảnh để checkout', 400);
+        let sql = `SELECT * FROM visitor_photos WHERE 1=1`;
+        const params = [];
+
+        // 1. Lọc theo ngày (Nếu có)
+        if (startDate && endDate) {
+            sql += ` AND captured_at BETWEEN ? AND ?`;
+            params.push(startDate, endDate);
         }
-    
-        const sql = `
-            UPDATE visitor_photos 
-            SET checkout_photo_path = ?, 
-                is_checkout = 1,
-                time_out = NOW()s
-            WHERE id = ?
-        `;
 
-        await executeQuery(sql, [photo, id]);
+        // 2. Tìm kiếm theo từ khóa (Tìm trong cột notes chứa Tên, CCCD...)
+        if (search) {
+            sql += ` AND notes LIKE ?`;
+            params.push(`%${search}%`);
+        }
 
-        res.json({ success: true, message: 'Checkout thành công' });
+        // 3. Sắp xếp và Phân trang
+        sql += ` ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
+
+        const photos = await executeQuery(sql, params);
+
+        res.json({
+            success: true,
+            data: photos,
+            pagination: { limit: limitNum, offset: offsetNum }
+        });
 
     } catch (error) {
-        next(error);
+    
     }
 }
 // GET /api/visitors/stats - Thống kê khách trong ngày
