@@ -244,7 +244,7 @@ export default function VisitorCameraPage() {
     try {
       const token = localStorage.getItem('token')
 
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos?limit=50`
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos?limit=20`
 
       if (filterStartDate) {
         url += `&start_date=${filterStartDate}`
@@ -352,9 +352,7 @@ export default function VisitorCameraPage() {
       <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl shadow-md p-4 mb-6 border border-cyan-200">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
+            
             <span className="font-bold text-gray-700">BỘ LỌC:</span>
           </div>
 
