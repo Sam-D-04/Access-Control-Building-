@@ -31,18 +31,20 @@ async function testDatabaseConnection() {
 }
 
 // Hàm thực thi câu query SQL
-async function executeQuery(sqlQuery, params) {
+async function executeQuery(sqlQuery, params = []) {
     try {
         const [results] = await connectionPool.execute(sqlQuery, params);
         return results;
     } catch (error) {
         console.error('Lỗi khi thực thi query:', error.message);
+        console.error('SQL:', sqlQuery);
+        console.error('Params:', params);
         throw error;
     }
 }
 
 // Hàm lấy 1 dòng dữ liệu từ database
-async function getOneRow(sqlQuery, params) {
+async function getOneRow(sqlQuery, params = []) {
     const results = await executeQuery(sqlQuery, params);
 
     // Kiểm tra có dữ liệu không
