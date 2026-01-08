@@ -78,8 +78,20 @@ async function deleteVisitorPhoto(req, res, next) {
     }
 }
 
+async function getVisitorPhotoById(req, res, next) {
+    try {
+        const { id } = req.params;
+        const photo = await getOneRow('SELECT * FROM visitor_photos WHERE id = ?', [id]);
+        if (!photo) throw new CustomError('Không tìm thấy ảnh', 404);
+        res.json({ success: true, data: photo });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     captureVisitorPhoto,
     getVisitorPhotos,
-    deleteVisitorPhoto
+    deleteVisitorPhoto,
+    getVisitorPhotoById
 };
