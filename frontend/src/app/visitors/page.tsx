@@ -34,7 +34,8 @@ export default function VisitorCameraPage() {
   const [stats, setStats] = useState<VisitorStats>({ total: 0, checked_out: 0, inside: 0, date: 'today' })
 
   // === BỘ LỌC ===
-  const [filterDate, setFilterDate] = useState('')
+  const [filterStartDate, setFilterStartDate] = useState('')
+  const [filterEndDate, setFilterEndDate] = useState('')
   const [filterStartTime, setFilterStartTime] = useState('')
   const [filterEndTime, setFilterEndTime] = useState('')
 
@@ -146,10 +147,17 @@ export default function VisitorCameraPage() {
     try {
       const token = localStorage.getItem('token')
 
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/stats`
-      if (filterDate) {
-        url += `?date=${filterDate}`
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/stats?`
+      const params = []
+
+      if (filterStartDate) {
+        params.push(`start_date=${filterStartDate}`)
       }
+      if (filterEndDate) {
+        params.push(`end_date=${filterEndDate}`)
+      }
+
+      url += params.join('&')
 
       const response = await axios.get(url, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -238,8 +246,11 @@ export default function VisitorCameraPage() {
 
       let url = `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos?limit=50`
 
-      if (filterDate) {
-        url += `&date=${filterDate}`
+      if (filterStartDate) {
+        url += `&start_date=${filterStartDate}`
+      }
+      if (filterEndDate) {
+        url += `&end_date=${filterEndDate}`
       }
       if (filterStartTime) {
         url += `&start_time=${filterStartTime}`
@@ -265,7 +276,7 @@ export default function VisitorCameraPage() {
       loadPhotos()
       loadStats()
     }
-  }, [isAuthenticated, filterDate, filterStartTime, filterEndTime])
+  }, [isAuthenticated, filterStartDate, filterEndDate, filterStartTime, filterEndTime])
 
   const deletePhoto = async (id: number) => {
     if (!confirm('Bạn có chắc muốn xóa ảnh này')) return
@@ -289,7 +300,8 @@ export default function VisitorCameraPage() {
 
   // Reset bộ lọc
   const resetFilters = () => {
-    setFilterDate('')
+    setFilterStartDate('')
+    setFilterEndDate('')
     setFilterStartTime('')
     setFilterEndTime('')
   }
@@ -321,7 +333,9 @@ export default function VisitorCameraPage() {
       {/* === THỐNG KÊ === */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
-            <div className="text-gray-500 text-sm font-semibold uppercase">Tổng khách hôm nay</div>
+            <div className="text-gray-500 text-sm font-semibold uppercase">
+              {filterStartDate || filterEndDate ? 'Tổng khách (theo bộ lọc)' : 'Tổng khách (tất cả)'}
+            </div>
             <div className="text-3xl font-bold text-blue-600 mt-1">{stats.total}</div>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-orange-500">
@@ -345,11 +359,21 @@ export default function VisitorCameraPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-600">Ngày:</label>
+            <label className="text-sm font-semibold text-gray-600">Từ ngày:</label>
             <input
               type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-cyan-500 bg-white"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-600">Đến ngày:</label>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
               className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-cyan-500 bg-white"
             />
           </div>

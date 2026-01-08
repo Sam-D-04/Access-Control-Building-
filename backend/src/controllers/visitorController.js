@@ -45,24 +45,33 @@ async function getVisitorPhotos(req, res, next) {
     try {
 
         const {
-            limit = 20,     
-            offset = 0,      
-            date,             
-            start_time,     
-            end_time        
+            limit = 20,
+            offset = 0,
+            start_date,      // Từ ngày
+            end_date,        // Đến ngày
+            start_time,      // Từ giờ
+            end_time         // Đến giờ
         } = req.query;
 
         const limitNum = parseInt(limit);
         const offsetNum = parseInt(offset);
 
 
-        let whereClauses = [];  
-        let params = [];      
+        let whereClauses = [];
+        let params = [];
 
-        // 1. Lọc theo ngày
-        if (date) {
-            whereClauses.push('DATE(captured_at) = ?');
-            params.push(date);
+        // 1. Lọc theo khoảng ngày (từ start_date đến end_date)
+        if (start_date && end_date) {
+            whereClauses.push('DATE(captured_at) BETWEEN ? AND ?');
+            params.push(start_date, end_date);
+        } else if (start_date) {
+            // Chỉ có ngày bắt đầu
+            whereClauses.push('DATE(captured_at) >= ?');
+            params.push(start_date);
+        } else if (end_date) {
+            // Chỉ có ngày kết thúc
+            whereClauses.push('DATE(captured_at) <= ?');
+            params.push(end_date);
         }
 
         // 2. Lọc theo giờ bắt đầu
@@ -81,7 +90,7 @@ async function getVisitorPhotos(req, res, next) {
         const whereSQL = whereClauses.length > 0
             ? 'WHERE ' + whereClauses.join(' AND ')
             : '';
-        
+
         const sql = `
             SELECT * FROM visitor_photos
             ${whereSQL}
@@ -107,7 +116,7 @@ async function getVisitorPhotos(req, res, next) {
                 offset: offsetNum,
                 total: countResult.total
             },
-            filters: { date, start_time, end_time }
+            filters: { start_date, end_date, start_time, end_time }
         });
 
     } catch (error) {
@@ -176,66 +185,36 @@ async function checkoutVisitor(req, res, next) {
     }
 }
 
-// GET /api/visitors/photos
-async function getVisitorPhotos(req, res) {
-    try {
-        const { limit = 20, offset = 0, startDate, endDate, search } = req.query;
-        const limitNum = parseInt(limit);
-        const offsetNum = parseInt(offset);
-
-        let sql = `SELECT * FROM visitor_photos WHERE 1=1`;
-        const params = [];
-
-        // 1. Lọc theo ngày (Nếu có)
-        if (startDate && endDate) {
-            sql += ` AND captured_at BETWEEN ? AND ?`;
-            params.push(startDate, endDate);
-        }
-
-        // 2. Tìm kiếm theo từ khóa (Tìm trong cột notes chứa Tên, CCCD...)
-        if (search) {
-            sql += ` AND notes LIKE ?`;
-            params.push(`%${search}%`);
-        }
-
-        // 3. Sắp xếp và Phân trang
-        sql += ` ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
-
-        const photos = await executeQuery(sql, params);
-
-        res.json({
-            success: true,
-            data: photos,
-            pagination: { limit: limitNum, offset: offsetNum }
-        });
-
-    } catch (error) {
-    
-    }
-}
-// GET /api/visitors/stats - Thống kê khách trong ngày
+// GET /api/visitors/stats - Thống kê khách
 async function getVisitorStats(req, res, next) {
     try {
-        const { date } = req.query; 
+        const { start_date, end_date } = req.query;
 
         // ===== XÂY DỰNG ĐIỀU KIỆN =====
-        let whereClause = '';
+        let whereClauses = [];
         let params = [];
 
-        if (date) {
-            // Lọc theo ngày cụ thể
-            whereClause = 'WHERE DATE(captured_at) = ?';
-            params.push(date);
-        } else {
-            // Mặc định: hôm nay
-            whereClause = 'WHERE DATE(captured_at) = CURDATE()';
+        // Lọc theo khoảng ngày (giống logic trong getVisitorPhotos)
+        if (start_date && end_date) {
+            whereClauses.push('DATE(captured_at) BETWEEN ? AND ?');
+            params.push(start_date, end_date);
+        } else if (start_date) {
+            whereClauses.push('DATE(captured_at) >= ?');
+            params.push(start_date);
+        } else if (end_date) {
+            whereClauses.push('DATE(captured_at) <= ?');
+            params.push(end_date);
         }
+
+        const whereClause = whereClauses.length > 0
+            ? 'WHERE ' + whereClauses.join(' AND ')
+            : '';
 
         // ===== QUERY THỐNG KÊ =====
         const sql = `
             SELECT
-                COUNT(*) as total,                                      
-                SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out  
+                COUNT(*) as total,
+                SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out
             FROM visitor_photos
             ${whereClause}
         `;
@@ -251,10 +230,11 @@ async function getVisitorStats(req, res, next) {
         res.json({
             success: true,
             data: {
-                total,        
-                checked_out,  
-                inside,       
-                date: date || 'today'
+                total,
+                checked_out,
+                inside,
+                start_date: start_date || null,
+                end_date: end_date || null
             }
         });
 
