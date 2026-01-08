@@ -355,11 +355,7 @@ const cancelCheckout = () => {
               )}
 
               {/* TRƯỜNG HỢP 2: ĐANG CHECKOUT (Chỉ hiện thông báo) */}
-              {checkoutId && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-sm font-semibold text-center shadow-sm">
-                      Hệ thống sẽ lưu ảnh này làm ảnh Checkout và cập nhật thời gian ra về.
-                  </div>
-              )}
+              
 
               {/* Nút Xác nhận Lưu */}
               <div className="flex gap-3 pt-2">
@@ -372,7 +368,7 @@ const cancelCheckout = () => {
                         : 'bg-gradient-to-r from-cyan-600 to-red-600 hover:from-cyan-700 hover:to-red-700' // Màu gradient cho Check-in
                   }`}
                 >
-                  {isUploading ? 'Đang xử lý...' : (checkoutId ? '✅ XÁC NHẬN CHECKOUT' : '💾 LƯU THÔNG TIN')}
+                  {isUploading ? 'Đang xử lý...' : (checkoutId ? 'XÁC NHẬN CHECKOUT' : 'LƯU THÔNG TIN')}
                 </button>
                 
                 <button 
