@@ -1,4 +1,3 @@
-
 const { executeQuery, getOneRow } = require('../config/database');
 const { CustomError } = require('../middlewares/errorHandler');
 const multer = require('multer');
@@ -6,20 +5,15 @@ const path = require('path');
 const fs = require('fs').promises;
 
 
-// MULTER CONFIG - Upload ảnh
 
-// Tạo folder uploads/visitors nếu chưa có
 const uploadDir = path.join(__dirname, '../../uploads/visitors');
-
 fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
 
-// Config multer
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        // Format: 2025-01-08_14-30-45_abc123.jpg
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
         const randomStr = Math.random().toString(36).substring(2, 8);
         const ext = path.extname(file.originalname);
@@ -27,7 +21,6 @@ const storage = multer.diskStorage({
     }
 });
 
-// Filter chỉ cho phép ảnh
 const fileFilter = (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -37,47 +30,36 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-// Middleware upload
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB
-    }
+    limits: { fileSize: 5 * 1024 * 1024 } 
 });
 
 
 // POST /api/visitors/capture - Upload ảnh khách lạ
 async function captureVisitorPhoto(req, res, next) {
     try {
-        // req.file được tạo bởi multer middleware
         if (!req.file) {
             throw new CustomError('Không tìm thấy file ảnh', 400);
         }
 
         const { notes } = req.body;
-        const capturedBy = req.user.id; 
+       
 
         // Đường dẫn relative từ backend root
         const photoPath = `uploads/visitors/${req.file.filename}`;
 
-        // Lưu vào database
+        // Lưu vào database 
         const sql = `
-            INSERT INTO visitor_photos (photo_path, notes, captured_by)
-            VALUES (?, ?, ?)
+            INSERT INTO visitor_photos (photo_path, notes)
+            VALUES (?, ?)
         `;
 
-        const result = await executeQuery(sql, [photoPath, notes || null, capturedBy]);
+        const result = await executeQuery(sql, [photoPath, notes || null]);
 
-        // Lấy record vừa tạo (kèm thông tin user)
         const photo = await getOneRow(`
-            SELECT
-                vp.*,
-                u.full_name as captured_by_name,
-                u.employee_id as captured_by_employee_id
-            FROM visitor_photos vp
-                LEFT JOIN users u ON vp.captured_by = u.id
-            WHERE vp.id = ?
+            SELECT * FROM visitor_photos WHERE id = ?
         `, [result.insertId]);
 
         console.log('Visitor photo captured:', photo.id);
@@ -102,19 +84,12 @@ async function getVisitorPhotos(req, res, next) {
     try {
         const { limit = 20, offset = 0 } = req.query;
 
+
         const sql = `
-            SELECT
-                vp.*,
-                u.full_name as captured_by_name,
-                u.employee_id as captured_by_employee_id
-            FROM visitor_photos vp
-            LEFT JOIN users u ON vp.captured_by = u.id
-            ORDER BY vp.captured_at DESC
+            SELECT * FROM visitor_photos 
+            ORDER BY captured_at DESC
             LIMIT ? OFFSET ?
         `;
-
-        console.log("---- DEBUG SQL ----");
-        console.log(sql);
 
         const photos = await executeQuery(sql, [parseInt(limit), parseInt(offset)]);
 
@@ -129,7 +104,7 @@ async function getVisitorPhotos(req, res, next) {
 
     } catch (error) {
         next(error);
-        console.error(error.message);
+        console.error("Get photos error:", error.message);
     }
 }
 
@@ -138,14 +113,9 @@ async function getVisitorPhotoById(req, res, next) {
     try {
         const { id } = req.params;
 
+        // Đã bỏ JOIN
         const photo = await getOneRow(`
-            SELECT
-                vp.*,
-                u.full_name as captured_by_name,
-                u.employee_id as captured_by_employee_id
-            FROM visitor_photos vp
-            LEFT JOIN users u ON vp.captured_by = u.id
-            WHERE vp.id = ?
+            SELECT * FROM visitor_photos WHERE id = ?
         `, [id]);
 
         if (!photo) {
@@ -177,7 +147,7 @@ async function deleteVisitorPhoto(req, res, next) {
         // Xóa record trong DB
         await executeQuery('DELETE FROM visitor_photos WHERE id = ?', [id]);
 
-        // Xóa file
+        // Xóa file vật lý
         const filePath = path.join(__dirname, '../../', photo.photo_path);
         fs.unlink(filePath).catch(console.error);
 
@@ -192,7 +162,7 @@ async function deleteVisitorPhoto(req, res, next) {
 }
 
 module.exports = {
-    upload, // Export middleware
+    upload,
     captureVisitorPhoto,
     getVisitorPhotos,
     getVisitorPhotoById,
