@@ -316,9 +316,9 @@ export default function VisitorCameraPage() {
                   />
                 </div>
 
-                {/* Ngày sinh */}
+                {/* Ngày cấp */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Ngày sinh</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Ngày cấp</label>
                   <input
                     type="date"
                     value={dob}
