@@ -48,9 +48,6 @@ export default function VisitorCameraPage() {
     }
   }, [isAuthenticated, isLoading, user, router])
 
-  // ============================================
-  // CAMERA FUNCTIONS
-  // ============================================
 
   // Bật camera
   const startCamera = async () => {
@@ -65,7 +62,7 @@ export default function VisitorCameraPage() {
       }
     } catch (error) {
       console.error('Error accessing camera:', error)
-      alert('Không thể truy cập camera. Vui lòng cho phép quyền truy cập camera.')
+      alert('Không thể truy cập camera.')
     }
   }
 
@@ -133,7 +130,7 @@ export default function VisitorCameraPage() {
         }
       )
 
-      alert('Đã lưu ảnh thành công!')
+      alert('Đã lưu ảnh thành công')
 
       // Reset
       setCapturedImage(null)
@@ -150,9 +147,6 @@ export default function VisitorCameraPage() {
     }
   }
 
-  // ============================================
-  // PHOTO LIST FUNCTIONS
-  // ============================================
 
   // Load danh sách ảnh
   const loadPhotos = async () => {
@@ -193,7 +187,7 @@ export default function VisitorCameraPage() {
         }
       )
 
-      alert('Đã xóa ảnh!')
+      alert('Đã xóa ảnh')
       loadPhotos()
     } catch (error: any) {
       alert(error.response?.data?.message || 'Lỗi khi xóa ảnh')
