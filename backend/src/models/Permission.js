@@ -136,7 +136,6 @@ async function updatePermission(permissionId, updateData) {
  */
 async function deletePermission(permissionId, hardDelete = false) {
     let sql;
-
     if (hardDelete) {
         sql = `DELETE FROM permissions WHERE id = ?`;
     } else {
