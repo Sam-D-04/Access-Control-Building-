@@ -104,7 +104,26 @@ export const departmentAPI = {
   getById: (id: number) => api.get(`/departments/${id}`),
 }
 
-//GUEST 
+
+// PERMISSION APIs
+export const permissionAPI = {
+  // Permission Templates
+  getAll: (activeOnly?: boolean) =>
+    api.get('/permissions', { params: activeOnly ? { active_only: true } : {} }),
+  getById: (id: number) => api.get(`/permissions/${id}`),
+  create: (data: any) => api.post('/permissions', data),
+  update: (id: number, data: any) => api.put(`/permissions/${id}`, data),
+  delete: (id: number, hardDelete?: boolean) =>
+    api.delete(`/permissions/${id}`, { params: hardDelete ? { hard_delete: true } : {} }),
+  getCards: (id: number) => api.get(`/permissions/${id}/cards`),
+
+  // Card Permission Assignment
+  getCardPermissions: (cardId: number) => api.get(`/cards/${cardId}/permissions`),
+  assignToCard: (cardId: number, data: any) => api.post(`/cards/${cardId}/permissions`, data),
+  updateCardPermission: (id: number, data: any) => api.put(`/card-permissions/${id}`, data),
+  removeFromCard: (id: number) => api.delete(`/card-permissions/${id}`),
+  removeAllFromCard: (cardId: number) => api.delete(`/cards/${cardId}/permissions`),
+}
 
 
 

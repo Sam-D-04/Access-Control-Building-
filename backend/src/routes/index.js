@@ -9,7 +9,7 @@ const userController = require('../controllers/userController');
 const cardController = require('../controllers/cardController');
 const departmentController = require('../controllers/departmentController');
 const visitorController = require('../controllers/visitorController');
-
+const permissionController = require('../controllers/permissionController');
 
 // Import middlewares
 const { authenticateToken, requireRole } = require('../middlewares/auth');
@@ -94,14 +94,28 @@ router.delete('/doors/:id', authenticateToken, requireRole('admin'), doorControl
 
 
 
-
 // DEPARTMENT ROUTES - /api/departments
 
-// GET /api/departments - Lấy danh sách phòng ban
+// GET /api/departments - Lấy danh sách phòng ban (?format=tree để lấy dạng cây)
 router.get('/departments', authenticateToken, departmentController.getAllDepartmentsHandler);
+
+// GET /api/departments/root - Lấy departments gốc (level 0)
+router.get('/departments/root', authenticateToken, departmentController.getRootDepartmentsHandler);
 
 // GET /api/departments/:id - Lấy thông tin phòng ban theo ID
 router.get('/departments/:id', authenticateToken, departmentController.getDepartmentByIdHandler);
+
+// GET /api/departments/:id/children - Lấy children trực tiếp
+router.get('/departments/:id/children', authenticateToken, departmentController.getChildrenHandler);
+
+// POST /api/departments - Tạo phòng ban mới (admin only)
+router.post('/departments', authenticateToken, requireRole('admin'), departmentController.createDepartmentHandler);
+
+// PUT /api/departments/:id - Cập nhật phòng ban (admin only)
+router.put('/departments/:id', authenticateToken, requireRole('admin'), departmentController.updateDepartmentHandler);
+
+// DELETE /api/departments/:id - Xóa phòng ban (admin only)
+router.delete('/departments/:id', authenticateToken, requireRole('admin'), departmentController.deleteDepartmentHandler);
 
 
 
@@ -147,5 +161,47 @@ router.put('/visitors/photos/:id/checkout', authenticateToken, requireRole('admi
 
 // GET - Thống kê (có filter: date)
 router.get('/visitors/stats', authenticateToken, requireRole('admin', 'security'), visitorController.getVisitorStats);
+
+
+// ===============================================
+// PERMISSION ROUTES - /api/permissions
+// ===============================================
+
+// GET /api/permissions - Lấy danh sách tất cả permission templates
+router.get('/permissions', authenticateToken, requireRole('admin'), permissionController.getAllPermissionsHandler);
+
+// GET /api/permissions/:id - Lấy chi tiết một permission template
+router.get('/permissions/:id', authenticateToken, requireRole('admin'), permissionController.getPermissionByIdHandler);
+
+// POST /api/permissions - Tạo permission template mới
+router.post('/permissions', authenticateToken, requireRole('admin'), permissionController.createPermissionHandler);
+
+// PUT /api/permissions/:id - Cập nhật permission template
+router.put('/permissions/:id', authenticateToken, requireRole('admin'), permissionController.updatePermissionHandler);
+
+// DELETE /api/permissions/:id - Xóa permission template
+router.delete('/permissions/:id', authenticateToken, requireRole('admin'), permissionController.deletePermissionHandler);
+
+// GET /api/permissions/:id/cards - Lấy danh sách cards có permission này
+router.get('/permissions/:id/cards', authenticateToken, requireRole('admin', 'security'), permissionController.getCardsByPermissionHandler);
+
+// GET /api/cards/:cardId/permissions - Lấy tất cả permissions của một card
+router.get('/cards/:cardId/permissions', authenticateToken, requireRole('admin', 'security'), permissionController.getCardPermissionsHandler);
+
+// POST /api/cards/:cardId/permissions - Gán permission cho card
+router.post('/cards/:cardId/permissions', authenticateToken, requireRole('admin'), permissionController.assignPermissionToCardHandler);
+
+// PUT /api/card-permissions/:id - Cập nhật card_permission
+router.put('/card-permissions/:id', authenticateToken, requireRole('admin'), permissionController.updateCardPermissionHandler);
+
+// DELETE /api/card-permissions/:id - Xóa một permission khỏi card
+router.delete('/card-permissions/:id', authenticateToken, requireRole('admin'), permissionController.removePermissionFromCardHandler);
+
+// DELETE /api/cards/:cardId/permissions - Xóa TẤT CẢ permissions của card
+router.delete('/cards/:cardId/permissions', authenticateToken, requireRole('admin'), permissionController.removeAllCardPermissionsHandler);
+
+
+
+
 
 module.exports = router;
