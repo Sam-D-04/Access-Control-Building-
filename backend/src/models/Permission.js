@@ -9,14 +9,10 @@ async function findPermissionById(permissionId) {
     `;
     const permission = await getOneRow(sql, [permissionId]);
 
-    // Parse JSON fields
+    // Parse JSON fields an toàn
     if (permission) {
-        if (permission.allowed_door_ids) {
-            permission.allowed_door_ids = JSON.parse(permission.allowed_door_ids);
-        }
-        if (permission.time_restrictions) {
-            permission.time_restrictions = JSON.parse(permission.time_restrictions);
-        }
+        permission.allowed_door_ids = safeJsonParse(permission.allowed_door_ids, []);
+        permission.time_restrictions = safeJsonParse(permission.time_restrictions, null);
     }
 
     return permission;
@@ -24,7 +20,6 @@ async function findPermissionById(permissionId) {
 
 
  //Lấy tất cả permissions (có thể filter theo is_active)
-
 async function getAllPermissions(activeOnly = false) {
     let sql = `SELECT * FROM permissions`;
 
@@ -36,16 +31,30 @@ async function getAllPermissions(activeOnly = false) {
 
     const results = await executeQuery(sql);
 
-    // Parse JSON fields cho tất cả records
+    // Parse JSON fields cho tất cả records với Try-Catch
     return results.map(permission => {
-        if (permission.allowed_door_ids) {
-            permission.allowed_door_ids = JSON.parse(permission.allowed_door_ids);
-        }
-        if (permission.time_restrictions) {
-            permission.time_restrictions = JSON.parse(permission.time_restrictions);
-        }
+        permission.allowed_door_ids = safeJsonParse(permission.allowed_door_ids, []);
+        permission.time_restrictions = safeJsonParse(permission.time_restrictions, null);
         return permission;
     });
+}
+
+// Hàm phụ trợ để parse JSON an toàn
+function safeJsonParse(jsonString, fallbackValue) {
+    if (!jsonString) return fallbackValue;
+    // Nếu nó đã là object/array (do driver DB tự parse), trả về luôn
+    if (typeof jsonString === 'object') return jsonString; 
+    
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        console.warn('JSON parse error:', e.message, 'Value:', jsonString);
+        // Fallback: Nếu chuỗi dạng "1,2,3" thì thử split
+        if (typeof jsonString === 'string' && jsonString.includes(',')) {
+            return jsonString.split(',').map(item => item.trim()); // Chuyển "1,2" thành ["1", "2"]
+        }
+        return fallbackValue;
+    }
 }
 
  //Tạo permission mới
@@ -82,7 +91,6 @@ async function createPermission(permissionData) {
 
 
 // Cập nhật permission
-
 async function updatePermission(permissionId, updateData) {
     const {
         name,
@@ -125,9 +133,6 @@ async function updatePermission(permissionId, updateData) {
 
 /**
  * Xóa permission (soft delete hoặc hard delete)
- * @param {number} permissionId
- * @param {boolean} hardDelete - true = xóa hẳn, false = set is_active = false
- * @returns {Promise<boolean>}
  */
 async function deletePermission(permissionId, hardDelete = false) {
     let sql;
@@ -143,14 +148,9 @@ async function deletePermission(permissionId, hardDelete = false) {
 }
 
 // ===============================================
-// CARD_PERMISSIONS TABLE - Gán permissions cho cards
+// CARD_PERMISSIONS TABLE 
 // ===============================================
 
-/**
- * Lấy tất cả permissions của một card
- * @param {number} cardId
- * @returns {Promise<Array>}
- */
 async function getCardPermissions(cardId) {
     const sql = `
         SELECT
@@ -169,22 +169,18 @@ async function getCardPermissions(cardId) {
 
     const results = await executeQuery(sql, [cardId]);
 
-    // Parse JSON fields
+    // Parse JSON fields an toàn
     return results.map(row => {
-        if (row.custom_door_ids) row.custom_door_ids = JSON.parse(row.custom_door_ids);
-        if (row.additional_door_ids) row.additional_door_ids = JSON.parse(row.additional_door_ids);
-        if (row.custom_time_restrictions) row.custom_time_restrictions = JSON.parse(row.custom_time_restrictions);
-        if (row.base_allowed_door_ids) row.base_allowed_door_ids = JSON.parse(row.base_allowed_door_ids);
-        if (row.base_time_restrictions) row.base_time_restrictions = JSON.parse(row.base_time_restrictions);
+        row.custom_door_ids = safeJsonParse(row.custom_door_ids, null);
+        row.additional_door_ids = safeJsonParse(row.additional_door_ids, null);
+        row.custom_time_restrictions = safeJsonParse(row.custom_time_restrictions, null);
+        row.base_allowed_door_ids = safeJsonParse(row.base_allowed_door_ids, null);
+        row.base_time_restrictions = safeJsonParse(row.base_time_restrictions, null);
         return row;
     });
 }
 
-/**
- * Gán permission cho card
- * @param {Object} data
- * @returns {Promise<number>} - ID của card_permission vừa tạo
- */
+// ... (Giữ nguyên các hàm assignPermissionToCard, updateCardPermission, remove... không đổi)
 async function assignPermissionToCard(data) {
     const {
         card_id,
@@ -223,12 +219,6 @@ async function assignPermissionToCard(data) {
     return result.insertId;
 }
 
-/**
- * Cập nhật card_permission
- * @param {number} cardPermissionId
- * @param {Object} updateData
- * @returns {Promise<boolean>}
- */
 async function updateCardPermission(cardPermissionId, updateData) {
     const {
         override_doors,
@@ -272,33 +262,18 @@ async function updateCardPermission(cardPermissionId, updateData) {
     return result.affectedRows > 0;
 }
 
-/**
- * Xóa permission khỏi card
- * @param {number} cardPermissionId
- * @returns {Promise<boolean>}
- */
 async function removePermissionFromCard(cardPermissionId) {
     const sql = `DELETE FROM card_permissions WHERE id = ?`;
     const result = await executeQuery(sql, [cardPermissionId]);
     return result.affectedRows > 0;
 }
 
-/**
- * Xóa tất cả permissions của một card
- * @param {number} cardId
- * @returns {Promise<boolean>}
- */
 async function removeAllCardPermissions(cardId) {
     const sql = `DELETE FROM card_permissions WHERE card_id = ?`;
     const result = await executeQuery(sql, [cardId]);
     return result.affectedRows > 0;
 }
 
-/**
- * Lấy danh sách cards có một permission cụ thể
- * @param {number} permissionId
- * @returns {Promise<Array>}
- */
 async function getCardsByPermission(permissionId) {
     const sql = `
         SELECT

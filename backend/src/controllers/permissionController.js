@@ -13,6 +13,7 @@ const {
 } = require('../models/Permission');
 
 
+
 // GET /api/permissions - Lấy danh sách tất cả permission templates
 async function getAllPermissionsHandler(req, res, next) {
     try {
