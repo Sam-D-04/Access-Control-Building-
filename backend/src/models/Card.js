@@ -1,133 +1,87 @@
 const { executeQuery, getOneRow } = require('../config/database');
 
-// tìm thẻ theo ID
+// Tìm thẻ theo ID (với thông tin user và department)
 async function findCardById(cardId) {
     const sql = `
-        SELECT
+        SELECT 
             c.*,
             u.full_name as user_name,
             u.email as user_email,
-            u.employee_id,
-            u.department_id,
-            u.position,
-            u.role,
-            u.is_active as user_is_active
-        FROM cards c
-        LEFT JOIN users u ON c.user_id = u.id
-        WHERE c.id = ?
-    `;
-
-    const card = await getOneRow(sql, [cardId]);
-    return card;
-}
-
-// tìm thẻ theo card_uid (dùng khi quẹt thẻ)
-async function findCardByUid(cardUid) {
-    const sql = `
-        SELECT
-            c.*,
-            u.id as user_id,
-            u.full_name,
-            u.email,
-            u.employee_id,
-            u.department_id,
-            u.position,
-            u.role,
-            u.is_active as user_is_active,
             d.name as department_name
         FROM cards c
         LEFT JOIN users u ON c.user_id = u.id
         LEFT JOIN departments d ON u.department_id = d.id
-        WHERE c.card_uid = ?
+        WHERE c.id = ?
     `;
-
-    const card = await getOneRow(sql, [cardUid]);
+    const card = await getOneRow(sql, [cardId]);
     return card;
 }
 
-// tìm tất cả thẻ của một user
-async function findCardsByUserId(userId) {
-    const sql = `
-        SELECT * FROM cards
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-    `;
-
-    const cards = await executeQuery(sql, [userId]);
-    return cards;
-}
-
-// lấy tất cả thẻ (cho admin xem danh sách)
+// Lấy tất cả thẻ
 async function getAllCards() {
     const sql = `
-        SELECT
-            c.id,
-            c.card_uid,
-            c.user_id,
-            c.is_active,
-            c.issued_at,
-            c.expired_at,
-            c.notes,
-            c.created_at,
+        SELECT 
+            c.*,
             u.full_name as user_name,
             u.email as user_email,
-            u.employee_id
+            d.name as department_name
         FROM cards c
         LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        WHERE c.is_active = TRUE
         ORDER BY c.created_at DESC
     `;
-
     const cards = await executeQuery(sql, []);
     return cards;
 }
 
-// Helper: Convert ISO datetime sang MySQL datetime format
-function toMySQLDatetime(date) {
-    if (!date) return null;
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return null;
-
-    // Format: YYYY-MM-DD HH:MM:SS
-    return d.toISOString().slice(0, 19).replace('T', ' ');
-}
-
-// tạo thẻ mới
+// Tạo thẻ mới
 async function createCard(cardData) {
     const sql = `
         INSERT INTO cards (
             card_uid,
             user_id,
-            is_active,
-            issued_at,
-            expired_at,
-            notes
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            issue_date,
+            expiry_date,
+            is_active
+        ) VALUES (?, ?, ?, ?, ?)
     `;
 
     const params = [
         cardData.card_uid,
         cardData.user_id,
-        cardData.is_active !== undefined ? cardData.is_active : true,
-        toMySQLDatetime(cardData.issued_at) || toMySQLDatetime(new Date()),
-        toMySQLDatetime(cardData.expired_at),
-        cardData.notes || null
+        cardData.issue_date || new Date().toISOString().split('T')[0],
+        cardData.expiry_date || null,
+        cardData.is_active !== undefined ? cardData.is_active : true
     ];
 
     const result = await executeQuery(sql, params);
-
-    // Trả về thẻ vừa tạo (có kèm user info)
     return await findCardById(result.insertId);
 }
 
-// cập nhật thẻ
+// Cập nhật thẻ
 async function updateCard(cardId, cardData) {
     const updateFields = [];
     const params = [];
 
-    // Chỉ update các field được gửi lên
+    if (cardData.card_uid !== undefined) {
+        updateFields.push('card_uid = ?');
+        params.push(cardData.card_uid);
+    }
+
     if (cardData.user_id !== undefined) {
         updateFields.push('user_id = ?');
         params.push(cardData.user_id);
+    }
+
+    if (cardData.issue_date !== undefined) {
+        updateFields.push('issue_date = ?');
+        params.push(cardData.issue_date);
+    }
+
+    if (cardData.expiry_date !== undefined) {
+        updateFields.push('expiry_date = ?');
+        params.push(cardData.expiry_date);
     }
 
     if (cardData.is_active !== undefined) {
@@ -135,57 +89,61 @@ async function updateCard(cardId, cardData) {
         params.push(cardData.is_active);
     }
 
-    if (cardData.expired_at !== undefined) {
-        updateFields.push('expired_at = ?');
-        params.push(toMySQLDatetime(cardData.expired_at));
-    }
-
-    if (cardData.notes !== undefined) {
-        updateFields.push('notes = ?');
-        params.push(cardData.notes);
-    }
-
-    // Nếu không có gì để update thì return card hiện tại
     if (updateFields.length === 0) {
         return await findCardById(cardId);
     }
 
-    // Thêm cardId vào params
     params.push(cardId);
 
     const sql = `UPDATE cards SET ${updateFields.join(', ')} WHERE id = ?`;
 
     await executeQuery(sql, params);
-
     return await findCardById(cardId);
 }
 
-// kích hoạt thẻ
+// Kích hoạt thẻ
 async function activateCard(cardId) {
     const sql = 'UPDATE cards SET is_active = TRUE WHERE id = ?';
     await executeQuery(sql, [cardId]);
     return await findCardById(cardId);
 }
 
-// vô hiệu hóa thẻ
+// Vô hiệu hóa thẻ
 async function deactivateCard(cardId) {
     const sql = 'UPDATE cards SET is_active = FALSE WHERE id = ?';
     await executeQuery(sql, [cardId]);
     return await findCardById(cardId);
 }
 
-// xóa thẻ
+// Xóa thẻ (soft delete)
 async function deleteCard(cardId) {
-    const sql = 'DELETE FROM cards WHERE id = ?';
+    const sql = 'UPDATE cards SET is_active = FALSE WHERE id = ?';
     const result = await executeQuery(sql, [cardId]);
     return result.affectedRows > 0;
 }
 
+// Lấy thẻ theo user
+async function getCardsByUser(userId) {
+    const sql = `
+        SELECT 
+            c.*,
+            u.full_name as user_name,
+            u.email as user_email,
+            d.name as department_name
+        FROM cards c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        WHERE c.user_id = ? AND c.is_active = TRUE
+        ORDER BY c.created_at DESC
+    `;
+    const cards = await executeQuery(sql, [userId]);
+    return cards;
+}
+
 module.exports = {
     findCardById,
-    findCardByUid,
-    findCardsByUserId,
     getAllCards,
+    getCardsByUser,
     createCard,
     updateCard,
     activateCard,

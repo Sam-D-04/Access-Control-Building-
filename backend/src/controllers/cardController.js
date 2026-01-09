@@ -1,8 +1,7 @@
 const {
     findCardById,
-    findCardByUid,
-    findCardsByUserId,
     getAllCards,
+    getCardsByUser,
     createCard,
     updateCard,
     activateCard,
@@ -13,18 +12,7 @@ const {
 // GET /api/cards - Lấy danh sách tất cả thẻ
 async function getAllCardsHandler(req, res, next) {
     try {
-        const { user_id } = req.query;
-
-        let cards;
-
-        // Filter theo user_id nếu có
-        if (user_id) {
-            cards = await findCardsByUserId(user_id);
-        }
-        // Lấy tất cả nếu không có filter
-        else {
-            cards = await getAllCards();
-        }
+        const cards = await getAllCards();
 
         return res.json({
             success: true,
@@ -63,10 +51,10 @@ async function getCardByIdHandler(req, res, next) {
     }
 }
 
-// POST /api/cards - Tạo thẻ mới (admin only)
+// POST /api/cards - Tạo thẻ mới
 async function createCardHandler(req, res, next) {
     try {
-        const { card_uid, user_id, is_active, issued_at, expired_at, notes } = req.body;
+        const { card_uid, user_id, issue_date, expiry_date, is_active } = req.body;
 
         // Validate required fields
         if (!card_uid || !user_id) {
@@ -76,39 +64,17 @@ async function createCardHandler(req, res, next) {
             });
         }
 
-        // Kiểm tra card_uid đã tồn tại chưa
-        const existingCard = await findCardByUid(card_uid);
-        if (existingCard) {
-            return res.status(400).json({
-                success: false,
-                message: 'Card UID đã được sử dụng'
-            });
-        }
-
-        // Validate expired_at phải sau issued_at
-        if (expired_at && issued_at) {
-            const issuedDate = new Date(issued_at);
-            const expiredDate = new Date(expired_at);
-            if (expiredDate <= issuedDate) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Ngày hết hạn phải sau ngày tạo'
-                });
-            }
-        }
-
         const cardData = {
             card_uid,
-            user_id,
-            is_active: is_active !== undefined ? is_active : true,
-            issued_at: issued_at || new Date(),
-            expired_at: expired_at || null,
-            notes: notes || null
+            user_id: parseInt(user_id),
+            issue_date: issue_date || new Date().toISOString().split('T')[0],
+            expiry_date: expiry_date || null,
+            is_active: is_active !== undefined ? is_active : true
         };
 
         const newCard = await createCard(cardData);
 
-        console.log('Card created:', newCard.card_uid, 'for user', newCard.user_name);
+        console.log('Card created:', newCard.id, newCard.card_uid, 'for user:', user_id);
 
         return res.status(201).json({
             success: true,
@@ -118,6 +84,15 @@ async function createCardHandler(req, res, next) {
 
     } catch (error) {
         console.error('Error in createCardHandler:', error);
+        
+        // Check for duplicate card_uid
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({
+                success: false,
+                message: 'Mã thẻ UID đã tồn tại'
+            });
+        }
+        
         next(error);
     }
 }
@@ -126,7 +101,7 @@ async function createCardHandler(req, res, next) {
 async function updateCardHandler(req, res, next) {
     try {
         const cardId = req.params.id;
-        const { user_id, is_active, expired_at, notes } = req.body;
+        const { card_uid, user_id, issue_date, expiry_date, is_active } = req.body;
 
         // Kiểm tra thẻ có tồn tại không
         const existingCard = await findCardById(cardId);
@@ -137,27 +112,16 @@ async function updateCardHandler(req, res, next) {
             });
         }
 
-        // Validate expired_at nếu có
-        if (expired_at) {
-            const issuedDate = new Date(existingCard.issued_at);
-            const expiredDate = new Date(expired_at);
-            if (expiredDate <= issuedDate) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'expired_at phải sau issued_at'
-                });
-            }
-        }
-
         const cardData = {};
-        if (user_id !== undefined) cardData.user_id = user_id;
+        if (card_uid !== undefined) cardData.card_uid = card_uid;
+        if (user_id !== undefined) cardData.user_id = parseInt(user_id);
+        if (issue_date !== undefined) cardData.issue_date = issue_date;
+        if (expiry_date !== undefined) cardData.expiry_date = expiry_date;
         if (is_active !== undefined) cardData.is_active = is_active;
-        if (expired_at !== undefined) cardData.expired_at = expired_at;
-        if (notes !== undefined) cardData.notes = notes;
 
         const updatedCard = await updateCard(cardId, cardData);
 
-        console.log('Card updated:', updatedCard.card_uid);
+        console.log('Card updated:', updatedCard.id, updatedCard.card_uid);
 
         return res.json({
             success: true,
@@ -167,6 +131,14 @@ async function updateCardHandler(req, res, next) {
 
     } catch (error) {
         console.error('Error in updateCardHandler:', error);
+        
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({
+                success: false,
+                message: 'Mã thẻ UID đã tồn tại'
+            });
+        }
+        
         next(error);
     }
 }
@@ -176,7 +148,6 @@ async function activateCardHandler(req, res, next) {
     try {
         const cardId = req.params.id;
 
-        // Kiểm tra thẻ có tồn tại không
         const existingCard = await findCardById(cardId);
         if (!existingCard) {
             return res.status(404).json({
@@ -185,17 +156,16 @@ async function activateCardHandler(req, res, next) {
             });
         }
 
-        // Kiểm tra thẻ đã active chưa
         if (existingCard.is_active) {
             return res.status(400).json({
                 success: false,
-                message: 'Thẻ đã ở trạng thái kích hoạt'
+                message: 'Thẻ đã được kích hoạt'
             });
         }
 
         const activatedCard = await activateCard(cardId);
 
-        console.log('Card activated:', activatedCard.card_uid);
+        console.log('Card activated:', activatedCard.card_uid, 'by', req.user.full_name);
 
         return res.json({
             success: true,
@@ -209,12 +179,11 @@ async function activateCardHandler(req, res, next) {
     }
 }
 
-// PUT /api/cards/:id/deactivate - Vô hiệu hóa thẻ (
+// PUT /api/cards/:id/deactivate - Vô hiệu hóa thẻ
 async function deactivateCardHandler(req, res, next) {
     try {
         const cardId = req.params.id;
 
-        // Kiểm tra thẻ có tồn tại không
         const existingCard = await findCardById(cardId);
         if (!existingCard) {
             return res.status(404).json({
@@ -223,7 +192,6 @@ async function deactivateCardHandler(req, res, next) {
             });
         }
 
-        // Nếu thẻ bị inactive
         if (!existingCard.is_active) {
             return res.status(400).json({
                 success: false,
@@ -233,7 +201,7 @@ async function deactivateCardHandler(req, res, next) {
 
         const deactivatedCard = await deactivateCard(cardId);
 
-        console.log('Card deactivated:', deactivatedCard.card_uid);
+        console.log('Card deactivated:', deactivatedCard.card_uid, 'by', req.user.full_name);
 
         return res.json({
             success: true,
@@ -247,12 +215,11 @@ async function deactivateCardHandler(req, res, next) {
     }
 }
 
-// DELETE /api/cards/:id - Xóa thẻ 
+// DELETE /api/cards/:id - Xóa thẻ (soft delete)
 async function deleteCardHandler(req, res, next) {
     try {
         const cardId = req.params.id;
 
-        // Kiểm tra thẻ có tồn tại không
         const existingCard = await findCardById(cardId);
         if (!existingCard) {
             return res.status(404).json({
@@ -270,7 +237,7 @@ async function deleteCardHandler(req, res, next) {
             });
         }
 
-        console.log('Card deleted:', existingCard.card_uid);
+        console.log('Card deleted:', existingCard.card_uid, 'by', req.user.full_name);
 
         return res.json({
             success: true,
