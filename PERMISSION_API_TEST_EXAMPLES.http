@@ -1,0 +1,334 @@
+###
+# PERMISSION SYSTEM API TEST FILE
+# Sử dụng với REST Client extension trong VS Code
+# Hoặc copy curl commands để test trên terminal
+###
+
+### Variables (Thay đổi theo môi trường của bạn)
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+@cardId = 1
+@permissionId = 1
+@cardPermissionId = 1
+
+### ==============================================
+### PERMISSION TEMPLATES MANAGEMENT
+### ==============================================
+
+### 1. Lấy tất cả permissions
+GET {{baseUrl}}/api/permissions
+Authorization: Bearer {{token}}
+
+### 2. Lấy tất cả permissions (chỉ active)
+GET {{baseUrl}}/api/permissions?active_only=true
+Authorization: Bearer {{token}}
+
+### 3. Lấy chi tiết một permission
+GET {{baseUrl}}/api/permissions/{{permissionId}}
+Authorization: Bearer {{token}}
+
+### 4. Tạo permission mới - Full Access
+POST {{baseUrl}}/api/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Full Access",
+  "description": "Quyền truy cập không giới hạn tất cả cửa, mọi thời điểm",
+  "door_access_mode": "all",
+  "priority": 100,
+  "is_active": true
+}
+
+### 5. Tạo permission - Office Hours (T2-T6, 8h-18h)
+POST {{baseUrl}}/api/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Office Hours Access",
+  "description": "Truy cập giờ hành chính T2-T6",
+  "door_access_mode": "all",
+  "time_restrictions": {
+    "start_time": "08:00",
+    "end_time": "18:00",
+    "allowed_days": [1, 2, 3, 4, 5]
+  },
+  "priority": 50,
+  "is_active": true
+}
+
+### 6. Tạo permission - VIP Access (chỉ cửa 1,2,3)
+POST {{baseUrl}}/api/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "VIP Access",
+  "description": "Truy cập khu vực VIP - cửa 1,2,3",
+  "door_access_mode": "specific",
+  "allowed_door_ids": [1, 2, 3],
+  "priority": 80,
+  "is_active": true
+}
+
+### 7. Tạo permission - Security 24/7
+POST {{baseUrl}}/api/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Security 24/7",
+  "description": "Bảo vệ - truy cập 24/7 cửa 1,2,10",
+  "door_access_mode": "specific",
+  "allowed_door_ids": [1, 2, 10],
+  "time_restrictions": null,
+  "priority": 90,
+  "is_active": true
+}
+
+### 8. Cập nhật permission
+PUT {{baseUrl}}/api/permissions/{{permissionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "description": "Updated description",
+  "priority": 55
+}
+
+### 9. Xóa permission (soft delete)
+DELETE {{baseUrl}}/api/permissions/{{permissionId}}
+Authorization: Bearer {{token}}
+
+### 10. Xóa permission (hard delete - xóa hẳn)
+DELETE {{baseUrl}}/api/permissions/{{permissionId}}?hard_delete=true
+Authorization: Bearer {{token}}
+
+### 11. Lấy danh sách cards có permission này
+GET {{baseUrl}}/api/permissions/{{permissionId}}/cards
+Authorization: Bearer {{token}}
+
+### ==============================================
+### CARD PERMISSION ASSIGNMENT
+### ==============================================
+
+### 12. Lấy tất cả permissions của một card
+GET {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+
+### 13. Gán permission cho card (đơn giản)
+POST {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2,
+  "is_active": true
+}
+
+### 14. Gán permission với override doors (chỉ cho phép cửa 1,2)
+POST {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2,
+  "override_doors": true,
+  "custom_door_ids": [1, 2],
+  "is_active": true
+}
+
+### 15. Gán permission với additional doors (thêm cửa 7,8)
+POST {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 3,
+  "additional_door_ids": [7, 8],
+  "is_active": true
+}
+
+### 16. Gán permission có thời hạn (3 tháng)
+POST {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2,
+  "valid_from": "2025-01-01 00:00:00",
+  "valid_until": "2025-03-31 23:59:59",
+  "is_active": true
+}
+
+### 17. Gán permission với override time (7h-19h)
+POST {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2,
+  "override_time": true,
+  "custom_time_restrictions": {
+    "start_time": "07:00",
+    "end_time": "19:00",
+    "allowed_days": [1, 2, 3, 4, 5, 6]
+  },
+  "is_active": true
+}
+
+### 18. Cập nhật card_permission
+PUT {{baseUrl}}/api/card-permissions/{{cardPermissionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "additional_door_ids": [9, 10],
+  "valid_until": "2026-12-31 23:59:59"
+}
+
+### 19. Xóa một permission khỏi card
+DELETE {{baseUrl}}/api/card-permissions/{{cardPermissionId}}
+Authorization: Bearer {{token}}
+
+### 20. Xóa TẤT CẢ permissions của card
+DELETE {{baseUrl}}/api/cards/{{cardId}}/permissions
+Authorization: Bearer {{token}}
+
+### ==============================================
+### ACCESS CONTROL TESTING
+### ==============================================
+
+### 21. Test access request (kiểm tra quyền truy cập)
+POST {{baseUrl}}/api/access/request
+Content-Type: application/json
+
+{
+  "card_uid": "ABC123",
+  "door_id": 1
+}
+
+### 22. Lấy access logs
+GET {{baseUrl}}/api/access/logs
+Authorization: Bearer {{token}}
+
+### 23. Lấy access logs của user hiện tại
+GET {{baseUrl}}/api/access/my-logs
+Authorization: Bearer {{token}}
+
+### ==============================================
+### EXAMPLES: USE CASES
+### ==============================================
+
+### USE CASE 1: Nhân viên mới - Office Hours Only
+# Bước 1: Tạo permission "Office Hours" (chỉ cần làm 1 lần)
+POST {{baseUrl}}/api/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Employee Standard",
+  "description": "Nhân viên thường - 8h-18h T2-T6",
+  "door_access_mode": "all",
+  "time_restrictions": {
+    "start_time": "08:00",
+    "end_time": "18:00",
+    "allowed_days": [1, 2, 3, 4, 5]
+  },
+  "priority": 40
+}
+
+### Bước 2: Gán cho card mới (card_id = 5)
+POST {{baseUrl}}/api/cards/5/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2
+}
+
+### USE CASE 2: Manager - Full Access
+POST {{baseUrl}}/api/cards/10/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 1
+}
+
+### USE CASE 3: Thực tập sinh - Chỉ cửa chính, có giám sát
+POST {{baseUrl}}/api/cards/15/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2,
+  "override_doors": true,
+  "custom_door_ids": [1],
+  "valid_from": "2025-01-01 00:00:00",
+  "valid_until": "2025-06-30 23:59:59"
+}
+
+### USE CASE 4: Nhân viên bảo vệ - 24/7 một số cửa
+POST {{baseUrl}}/api/cards/20/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 4
+}
+
+### USE CASE 5: Dự án đặc biệt - Thêm quyền tạm thời vào phòng Server
+POST {{baseUrl}}/api/cards/25/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permission_id": 2,
+  "additional_door_ids": [15],
+  "valid_from": "2025-06-01 08:00:00",
+  "valid_until": "2025-06-07 18:00:00"
+}
+
+### ==============================================
+### TROUBLESHOOTING
+### ==============================================
+
+### Kiểm tra card có những permissions nào
+GET {{baseUrl}}/api/cards/1/permissions
+Authorization: Bearer {{token}}
+
+### Kiểm tra permission có bao nhiêu cards
+GET {{baseUrl}}/api/permissions/2/cards
+Authorization: Bearer {{token}}
+
+### Test thử access với card cụ thể
+POST {{baseUrl}}/api/access/request
+Content-Type: application/json
+
+{
+  "card_uid": "CARD_UID_HERE",
+  "door_id": 1
+}
+
+###
+# EXPECTED RESPONSES
+###
+
+# SUCCESS RESPONSE (granted: true)
+# {
+#   "success": true,
+#   "granted": true,
+#   "message": "Truy cập được cấp phép",
+#   "log": { ... }
+# }
+
+# DENIED RESPONSE (granted: false)
+# {
+#   "success": true,
+#   "granted": false,
+#   "message": "Truy cập bị từ chối",
+#   "reason": "Không có quyền truy cập cửa này",
+#   "log": { ... }
+# }
