@@ -87,8 +87,9 @@ export default function DepartmentsPage() {
     setExpandedNodes(newExpanded)
   }
 
-  const handleOpenModal = (dept?: Department) => {
+ const handleOpenModal = (dept?: Department, parentIdForAdd?: number) => {
     if (dept) {
+      // Chế độ SỬA
       setEditingDept(dept)
       setFormData({
         name: dept.name,
@@ -96,10 +97,11 @@ export default function DepartmentsPage() {
         description: dept.description || '',
       })
     } else {
-      setEditingDept(null)
+      // Chế độ THÊM (Mới hoặc Con)
+      setEditingDept(null) // phải set null để biết là đang tạo mới
       setFormData({
         name: '',
-        parent_id: '',
+        parent_id: parentIdForAdd ? parentIdForAdd.toString() : '', // Nếu có parentId thì điền vào
         description: '',
       })
     }
