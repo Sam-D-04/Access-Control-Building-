@@ -1,8 +1,6 @@
 const {
     findDoorById,
     getAllDoors,
-    getDoorsByAccessLevel,
-    getDoorsByDepartment,
     createDoor,
     updateDoor,
     lockDoor: lockDoorModel,
@@ -15,22 +13,7 @@ const { publishMessage } = require('../config/mqtt');
 // GET /api/doors - Lấy danh sách tất cả cửa
 async function getDoorsHandler(req, res, next) {
     try {
-        const { access_level, department_id } = req.query;
-
-        let doors;
-
-        // Filter theo access_level nếu có
-        if (access_level) {
-            doors = await getDoorsByAccessLevel(access_level);
-        }
-        // Filter theo department_id nếu có
-        else if (department_id) {
-            doors = await getDoorsByDepartment(department_id);
-        }
-        // Lấy tất cả nếu không có filter
-        else {
-            doors = await getAllDoors();
-        }
+        const doors = await getAllDoors();
 
         return res.json({
             success: true,
@@ -69,10 +52,10 @@ async function getDoorByIdHandler(req, res, next) {
     }
 }
 
-// POST /api/doors - Tạo cửa mới 
+// POST /api/doors - Tạo cửa mới
 async function createDoorHandler(req, res, next) {
     try {
-        const { name, location, access_level, department_id, is_locked, is_active } = req.body;
+        const { name, location, is_locked, is_active } = req.body;
 
         // Validate required fields
         if (!name) {
@@ -82,28 +65,9 @@ async function createDoorHandler(req, res, next) {
             });
         }
 
-        // Validate access_level
-        const validAccessLevels = ['all', 'department', 'vip'];
-        if (access_level && !validAccessLevels.includes(access_level)) {
-            return res.status(400).json({
-                success: false,
-                message: 'access_level phải là: all, department, hoặc vip'
-            });
-        }
-
-        // Nếu access_level = 'department' thì phải có department_id
-        if (access_level === 'department' && !department_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'access_level = department cần có department_id'
-            });
-        }
-
         const doorData = {
             name,
             location,
-            access_level: access_level || 'all',
-            department_id: department_id || null,
             is_locked: is_locked !== undefined ? is_locked : false,
             is_active: is_active !== undefined ? is_active : true
         };
@@ -128,7 +92,7 @@ async function createDoorHandler(req, res, next) {
 async function updateDoorHandler(req, res, next) {
     try {
         const doorId = req.params.id;
-        const { name, location, access_level, department_id, is_locked, is_active } = req.body;
+        const { name, location, is_locked, is_active } = req.body;
 
         // Kiểm tra cửa có tồn tại không
         const existingDoor = await findDoorById(doorId);
@@ -139,20 +103,9 @@ async function updateDoorHandler(req, res, next) {
             });
         }
 
-        // Validate access_level nếu có
-        const validAccessLevels = ['all', 'department', 'vip'];
-        if (access_level && !validAccessLevels.includes(access_level)) {
-            return res.status(400).json({
-                success: false,
-                message: 'access_level phải là: all, department, hoặc vip'
-            });
-        }
-
         const doorData = {};
         if (name !== undefined) doorData.name = name;
         if (location !== undefined) doorData.location = location;
-        if (access_level !== undefined) doorData.access_level = access_level;
-        if (department_id !== undefined) doorData.department_id = department_id;
         if (is_locked !== undefined) doorData.is_locked = is_locked;
         if (is_active !== undefined) doorData.is_active = is_active;
 

@@ -299,7 +299,7 @@ export default function CardsPage() {
   }
 
   return (
-    <DashboardLayout title="Quản lý mã truy cập">
+    <DashboardLayout title="Quản lý thẻ truy cập">
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
