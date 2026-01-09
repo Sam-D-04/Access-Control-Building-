@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { permissionAPI, cardAPI } from '@/lib/api'
+import { permissionAPI, cardAPI, doorAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 interface Permission {
@@ -21,10 +21,17 @@ interface Permission {
   created_at: string
 }
 
-interface TimeRestriction {
-  start_time: string
-  end_time: string
-  allowed_days: number[]
+interface Door {
+  id: number
+  name: string
+  location: string
+  access_level: string
+}
+
+interface Card {
+  id: number
+  card_uid: string
+  user_name: string
 }
 
 const DAYS = [
@@ -39,18 +46,19 @@ const DAYS = [
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<Permission[]>([])
+  const [doors, setDoors] = useState<Door[]>([])
+  const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [showAssignModal, setShowAssignModal] = useState(false)
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null)
-  const [selectedPermissionId, setSelectedPermissionId] = useState<number | null>(null)
+  const [currentStep, setCurrentStep] = useState(1) // 1: Permission Info, 2: Assign Cards
 
   // Form data
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     door_access_mode: 'all' as 'all' | 'specific' | 'none',
-    allowed_door_ids: '',
+    allowed_door_ids: [] as number[],
     priority: 50,
     is_active: true,
     has_time_restrictions: false,
@@ -59,60 +67,47 @@ export default function PermissionsPage() {
     allowed_days: [1, 2, 3, 4, 5],
   })
 
-  // Card assignment
-  const [cards, setCards] = useState<any[]>([])
-  const [selectedCardId, setSelectedCardId] = useState('')
-  const [assignmentData, setAssignmentData] = useState({
-    override_doors: false,
-    custom_door_ids: '',
-    override_time: false,
-    custom_start_time: '08:00',
-    custom_end_time: '18:00',
-    custom_allowed_days: [1, 2, 3, 4, 5],
-    additional_door_ids: '',
-    valid_from: '',
-    valid_until: '',
-  })
+  // Card selection for new permission
+  const [selectedCardIds, setSelectedCardIds] = useState<number[]>([])
 
   // Filter
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
 
   useEffect(() => {
-    fetchPermissions()
-    fetchCards()
+    fetchData()
   }, [])
 
-  const fetchPermissions = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
-      const response = await permissionAPI.getAll()
-      setPermissions(response.data.data)
+      const [permResponse, doorResponse, cardResponse] = await Promise.all([
+        permissionAPI.getAll(),
+        doorAPI.getAll(),
+        cardAPI.getAll(),
+      ])
+      setPermissions(permResponse.data.data)
+      setDoors(doorResponse.data.data)
+      setCards(cardResponse.data.data)
     } catch (error) {
-      console.error('Error fetching permissions:', error)
-      toast.error('Không thể tải danh sách phân quyền')
+      console.error('Error fetching data:', error)
+      toast.error('Không thể tải dữ liệu')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchCards = async () => {
-    try {
-      const response = await cardAPI.getAll()
-      setCards(response.data.data)
-    } catch (error) {
-      console.error('Error fetching cards:', error)
-    }
-  }
-
   const handleOpenModal = (permission?: Permission) => {
+    setCurrentStep(1)
+    setSelectedCardIds([])
+    
     if (permission) {
       setEditingPermission(permission)
       setFormData({
         name: permission.name,
         description: permission.description || '',
         door_access_mode: permission.door_access_mode,
-        allowed_door_ids: permission.allowed_door_ids?.join(',') || '',
+        allowed_door_ids: permission.allowed_door_ids || [],
         priority: permission.priority,
         is_active: permission.is_active,
         has_time_restrictions: !!permission.time_restrictions,
@@ -126,7 +121,7 @@ export default function PermissionsPage() {
         name: '',
         description: '',
         door_access_mode: 'all',
-        allowed_door_ids: '',
+        allowed_door_ids: [],
         priority: 50,
         is_active: true,
         has_time_restrictions: false,
@@ -141,10 +136,13 @@ export default function PermissionsPage() {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingPermission(null)
+    setCurrentStep(1)
+    setSelectedCardIds([])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
     try {
       const data: any = {
         name: formData.name,
@@ -154,9 +152,9 @@ export default function PermissionsPage() {
         is_active: formData.is_active,
       }
 
-      // Parse allowed_door_ids
-      if (formData.door_access_mode === 'specific' && formData.allowed_door_ids) {
-        data.allowed_door_ids = formData.allowed_door_ids.split(',').map((id) => parseInt(id.trim())).filter((id) => !isNaN(id))
+      // Allowed door ids
+      if (formData.door_access_mode === 'specific') {
+        data.allowed_door_ids = formData.allowed_door_ids
       } else {
         data.allowed_door_ids = null
       }
@@ -172,15 +170,44 @@ export default function PermissionsPage() {
         data.time_restrictions = null
       }
 
+      let permissionId: number
+
       if (editingPermission) {
         await permissionAPI.update(editingPermission.id, data)
         toast.success('Cập nhật phân quyền thành công')
+        fetchData()
+        handleCloseModal()
       } else {
-        await permissionAPI.create(data)
+        // Tạo mới
+        const response = await permissionAPI.create(data)
+        permissionId = response.data.data.id
         toast.success('Tạo phân quyền thành công')
+        
+        // Chuyển sang bước 2: Gán cards
+        setEditingPermission(response.data.data)
+        setCurrentStep(2)
       }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
+    }
+  }
 
-      fetchPermissions()
+  const handleAssignCards = async () => {
+    if (!editingPermission || selectedCardIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 thẻ')
+      return
+    }
+
+    try {
+      // Gán permission cho các cards đã chọn
+      await Promise.all(
+        selectedCardIds.map(cardId =>
+          permissionAPI.assignToCard(cardId, { permission_id: editingPermission.id })
+        )
+      )
+      
+      toast.success(`Đã gán phân quyền cho ${selectedCardIds.length} thẻ`)
+      fetchData()
       handleCloseModal()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
@@ -193,7 +220,7 @@ export default function PermissionsPage() {
     try {
       await permissionAPI.delete(id)
       toast.success('Xóa phân quyền thành công')
-      fetchPermissions()
+      fetchData()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa phân quyền')
     }
@@ -213,69 +240,25 @@ export default function PermissionsPage() {
     }
   }
 
-  const handleOpenAssignModal = (permissionId: number) => {
-    setSelectedPermissionId(permissionId)
-    setSelectedCardId('')
-    setAssignmentData({
-      override_doors: false,
-      custom_door_ids: '',
-      override_time: false,
-      custom_start_time: '08:00',
-      custom_end_time: '18:00',
-      custom_allowed_days: [1, 2, 3, 4, 5],
-      additional_door_ids: '',
-      valid_from: '',
-      valid_until: '',
-    })
-    setShowAssignModal(true)
+  const handleToggleDoor = (doorId: number) => {
+    if (formData.allowed_door_ids.includes(doorId)) {
+      setFormData({
+        ...formData,
+        allowed_door_ids: formData.allowed_door_ids.filter(id => id !== doorId),
+      })
+    } else {
+      setFormData({
+        ...formData,
+        allowed_door_ids: [...formData.allowed_door_ids, doorId],
+      })
+    }
   }
 
-  const handleAssignToCard = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedCardId || !selectedPermissionId) return
-
-    try {
-      const data: any = {
-        permission_id: selectedPermissionId,
-        override_doors: assignmentData.override_doors,
-        override_time: assignmentData.override_time,
-      }
-
-      if (assignmentData.override_doors && assignmentData.custom_door_ids) {
-        data.custom_door_ids = assignmentData.custom_door_ids
-          .split(',')
-          .map((id) => parseInt(id.trim()))
-          .filter((id) => !isNaN(id))
-      }
-
-      if (assignmentData.override_time) {
-        data.custom_time_restrictions = {
-          start_time: assignmentData.custom_start_time,
-          end_time: assignmentData.custom_end_time,
-          allowed_days: assignmentData.custom_allowed_days,
-        }
-      }
-
-      if (assignmentData.additional_door_ids) {
-        data.additional_door_ids = assignmentData.additional_door_ids
-          .split(',')
-          .map((id) => parseInt(id.trim()))
-          .filter((id) => !isNaN(id))
-      }
-
-      if (assignmentData.valid_from) {
-        data.valid_from = new Date(assignmentData.valid_from).toISOString()
-      }
-
-      if (assignmentData.valid_until) {
-        data.valid_until = new Date(assignmentData.valid_until).toISOString()
-      }
-
-      await permissionAPI.assignToCard(parseInt(selectedCardId), data)
-      toast.success('Gán phân quyền cho thẻ thành công')
-      setShowAssignModal(false)
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
+  const handleToggleCard = (cardId: number) => {
+    if (selectedCardIds.includes(cardId)) {
+      setSelectedCardIds(selectedCardIds.filter(id => id !== cardId))
+    } else {
+      setSelectedCardIds([...selectedCardIds, cardId])
     }
   }
 
@@ -305,18 +288,11 @@ export default function PermissionsPage() {
   }
 
   return (
-    <DashboardLayout title="Phân quyền">
+    <DashboardLayout title='Quản lý phân quyền'>
       <div className="p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Quản lý Phân quyền</h1>
-          <p className="text-gray-600">Quản lý các mẫu phân quyền và gán cho thẻ</p>
-        </div>
-
         {/* Toolbar */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1">
               <input
                 type="text"
@@ -327,7 +303,6 @@ export default function PermissionsPage() {
               />
             </div>
 
-            {/* Filter Status */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -338,7 +313,6 @@ export default function PermissionsPage() {
               <option value="inactive">Đã vô hiệu</option>
             </select>
 
-            {/* Add Button */}
             <button
               onClick={() => handleOpenModal()}
               className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition flex items-center gap-2"
@@ -365,22 +339,22 @@ export default function PermissionsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Tên phân quyền
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Chế độ cửa
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Giờ làm việc
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ưu tiên
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Độ ưu tiên
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Trạng thái
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                       Thao tác
                     </th>
                   </tr>
@@ -396,19 +370,29 @@ export default function PermissionsPage() {
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                           {getDoorModeLabel(permission.door_access_mode)}
                         </span>
+                        {permission.door_access_mode === 'specific' && permission.allowed_door_ids && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Cửa: {permission.allowed_door_ids.join(', ')}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {permission.time_restrictions ? (
                           <div className="text-sm text-gray-900">
                             <div>{permission.time_restrictions.start_time} - {permission.time_restrictions.end_time}</div>
-                            <div className="text-gray-500">{getDaysLabel(permission.time_restrictions.allowed_days)}</div>
+                            <div className="text-gray-500 text-xs">{getDaysLabel(permission.time_restrictions.allowed_days)}</div>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-500">24/7</span>
+                          <span className="text-sm text-green-600 font-semibold">24/7</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">{permission.priority}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-gray-900">{permission.priority}</span>
+                          <div className="text-xs text-gray-500">
+                            {permission.priority >= 80 ? 'Cao' : permission.priority >= 50 ? 'Trung bình' : 'Thấp'}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -422,15 +406,6 @@ export default function PermissionsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleOpenAssignModal(permission.id)}
-                          className="text-green-600 hover:text-green-900 mr-3"
-                          title="Gán cho thẻ"
-                        >
-                          <svg className="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
                         <button
                           onClick={() => handleOpenModal(permission)}
                           className="text-cyan-600 hover:text-cyan-900 mr-3"
@@ -456,260 +431,283 @@ export default function PermissionsPage() {
       {/* Modal: Create/Edit Permission */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">
-                {editingPermission ? 'Chỉnh sửa phân quyền' : 'Thêm phân quyền mới'}
-              </h2>
+              {/* Header with Steps */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold mb-4">
+                  {editingPermission && currentStep === 1 ? 'Chỉnh sửa phân quyền' : currentStep === 1 ? 'Thêm phân quyền mới' : 'Gán thẻ cho phân quyền'}
+                </h2>
+                
+                {!editingPermission && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-cyan-600' : 'text-gray-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-cyan-600 text-white' : 'bg-gray-200'}`}>
+                        1
+                      </div>
+                      <span className="font-medium">Thông tin phân quyền</span>
+                    </div>
+                    <div className="flex-1 h-1 bg-gray-200">
+                      <div className={`h-full ${currentStep >= 2 ? 'bg-cyan-600' : 'bg-gray-200'}`} style={{ width: currentStep >= 2 ? '100%' : '0%' }}></div>
+                    </div>
+                    <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-cyan-600' : 'text-gray-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-cyan-600 text-white' : 'bg-gray-200'}`}>
+                        2
+                      </div>
+                      <span className="font-medium">Gán thẻ (tùy chọn)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tên phân quyền <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    placeholder="VD: Office Hours Access"
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    rows={2}
-                    placeholder="Mô tả chi tiết"
-                  />
-                </div>
-
-                {/* Door Access Mode */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Chế độ truy cập cửa</label>
-                  <select
-                    value={formData.door_access_mode}
-                    onChange={(e) => setFormData({ ...formData, door_access_mode: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  >
-                    <option value="all">Tất cả cửa</option>
-                    <option value="specific">Cửa cụ thể</option>
-                    <option value="none">Không có cửa nào</option>
-                  </select>
-                </div>
-
-                {/* Allowed Door IDs */}
-                {formData.door_access_mode === 'specific' && (
+              {/* Step 1: Permission Info */}
+              {currentStep === 1 && (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Danh sách ID cửa (cách nhau bởi dấu phẩy)
+                      Tên phân quyền <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={formData.allowed_door_ids}
-                      onChange={(e) => setFormData({ ...formData, allowed_door_ids: e.target.value })}
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      placeholder="VD: 1,2,3"
+                      placeholder="VD: Office Hours Access"
                     />
                   </div>
-                )}
 
-                {/* Priority */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Độ ưu tiên (0-100)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Số càng cao = ưu tiên càng cao</p>
-                </div>
-
-                {/* Time Restrictions */}
-                <div>
-                  <label className="flex items-center gap-2 mb-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.has_time_restrictions}
-                      onChange={(e) => setFormData({ ...formData, has_time_restrictions: e.target.checked })}
-                      className="rounded text-cyan-600 focus:ring-cyan-500"
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      rows={2}
+                      placeholder="Mô tả chi tiết"
                     />
-                    <span className="text-sm font-medium text-gray-700">Giới hạn thời gian</span>
-                  </label>
+                  </div>
 
-                  {formData.has_time_restrictions && (
-                    <div className="space-y-3 ml-6 p-4 bg-gray-50 rounded-lg">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu</label>
-                          <input
-                            type="time"
-                            value={formData.start_time}
-                            onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc</label>
-                          <input
-                            type="time"
-                            value={formData.end_time}
-                            onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                          />
-                        </div>
-                      </div>
+                  {/* Priority with explanation */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Độ ưu tiên (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                  
+                  </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Ngày trong tuần</label>
-                        <div className="flex gap-2 flex-wrap">
-                          {DAYS.map((day) => (
-                            <button
-                              key={day.value}
-                              type="button"
-                              onClick={() => handleToggleDay(day.value)}
-                              className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                                formData.allowed_days.includes(day.value)
-                                  ? 'bg-cyan-600 text-white'
-                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                              }`}
-                            >
-                              {day.label}
-                            </button>
-                          ))}
-                        </div>
+                  {/* Door Access Mode */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chế độ truy cập cửa</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['all', 'specific', 'none'].map(mode => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, door_access_mode: mode as any, allowed_door_ids: [] })}
+                          className={`px-4 py-3 rounded-lg border-2 transition ${
+                            formData.door_access_mode === mode
+                              ? 'border-cyan-600 bg-cyan-50 text-cyan-900 font-semibold'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {mode === 'all' ? 'Tất cả cửa' : mode === 'specific' ? 'Cửa cụ thể' : 'Không có'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Door Selection Grid */}
+                  {formData.door_access_mode === 'specific' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Chọn cửa được phép (đã chọn: {formData.allowed_door_ids.length})
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-3 border border-gray-300 rounded-lg">
+                        {doors.map(door => (
+                          <label
+                            key={door.id}
+                            className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition ${
+                              formData.allowed_door_ids.includes(door.id)
+                                ? 'bg-cyan-50 border-cyan-600'
+                                : 'bg-white border-gray-300 hover:border-cyan-400'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.allowed_door_ids.includes(door.id)}
+                              onChange={() => handleToggleDoor(door.id)}
+                              className="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{door.name}</div>
+                              <div className="text-xs text-gray-500 truncate">{door.location}</div>
+                            </div>
+                          </label>
+                        ))}
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Is Active */}
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="rounded text-cyan-600 focus:ring-cyan-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Kích hoạt</span>
-                  </label>
-                </div>
-
-                {/* Buttons */}
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition"
-                  >
-                    {editingPermission ? 'Cập nhật' : 'Tạo mới'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                  >
-                    Hủy
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Assign to Card */}
-      {showAssignModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Gán phân quyền cho thẻ</h2>
-
-              <form onSubmit={handleAssignToCard} className="space-y-4">
-                {/* Select Card */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chọn thẻ <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    required
-                    value={selectedCardId}
-                    onChange={(e) => setSelectedCardId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  >
-                    <option value="">-- Chọn thẻ --</option>
-                    {cards.map((card) => (
-                      <option key={card.id} value={card.id}>
-                        {card.card_uid} - {card.user_name || 'Chưa gán'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Additional Doors */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thêm cửa bổ sung (ID, cách nhau bởi dấu phẩy)
-                  </label>
-                  <input
-                    type="text"
-                    value={assignmentData.additional_door_ids}
-                    onChange={(e) => setAssignmentData({ ...assignmentData, additional_door_ids: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    placeholder="VD: 7,8,9"
-                  />
-                </div>
-
-                {/* Valid From/Until */}
-                <div className="grid grid-cols-2 gap-3">
+                  {/* Time Restrictions */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hiệu lực từ</label>
-                    <input
-                      type="datetime-local"
-                      value={assignmentData.valid_from}
-                      onChange={(e) => setAssignmentData({ ...assignmentData, valid_from: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hiệu lực đến</label>
-                    <input
-                      type="datetime-local"
-                      value={assignmentData.valid_until}
-                      onChange={(e) => setAssignmentData({ ...assignmentData, valid_until: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                  </div>
-                </div>
+                    <label className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.has_time_restrictions}
+                        onChange={(e) => setFormData({ ...formData, has_time_restrictions: e.target.checked })}
+                        className="rounded text-cyan-600 focus:ring-cyan-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Giới hạn thời gian</span>
+                    </label>
 
-                {/* Buttons */}
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition"
-                  >
-                    Gán phân quyền
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAssignModal(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                  >
-                    Hủy
-                  </button>
+                    {formData.has_time_restrictions && (
+                      <div className="space-y-3 ml-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu</label>
+                            <input
+                              type="time"
+                              value={formData.start_time}
+                              onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc</label>
+                            <input
+                              type="time"
+                              value={formData.end_time}
+                              onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Ngày trong tuần</label>
+                          <div className="flex gap-2 flex-wrap">
+                            {DAYS.map((day) => (
+                              <button
+                                key={day.value}
+                                type="button"
+                                onClick={() => handleToggleDay(day.value)}
+                                className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
+                                  formData.allowed_days.includes(day.value)
+                                    ? 'bg-cyan-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                              >
+                                {day.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Is Active */}
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_active}
+                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                        className="rounded text-cyan-600 focus:ring-cyan-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Kích hoạt</span>
+                    </label>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition"
+                    >
+                      {editingPermission ? 'Cập nhật' : 'Tiếp theo →'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Step 2: Assign Cards */}
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800">
+                      Phân quyền "<strong>{editingPermission?.name}</strong>" đã được tạo thành công
+                    </p>
+                    <p className="text-sm text-green-700 mt-1">
+                      Bạn có thể gán phân quyền này cho các thẻ bên dưới (hoặc bỏ qua và hoàn thành)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Chọn thẻ cần gán (đã chọn: {selectedCardIds.length})
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto p-3 border border-gray-300 rounded-lg">
+                      {cards.map(card => (
+                        <label
+                          key={card.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                            selectedCardIds.includes(card.id)
+                              ? 'bg-green-50 border-green-600'
+                              : 'bg-white border-gray-300 hover:border-green-400'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCardIds.includes(card.id)}
+                            onChange={() => handleToggleCard(card.id)}
+                            className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 font-mono">{card.card_uid}</div>
+                            <div className="text-xs text-gray-500">{card.user_name || 'Chưa gán nhân viên'}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={handleAssignCards}
+                      disabled={selectedCardIds.length === 0}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Gán cho {selectedCardIds.length} thẻ
+                    </button>
+                    <button
+                      onClick={handleCloseModal}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    >
+                      Bỏ qua & Hoàn thành
+                    </button>
+                  </div>
                 </div>
-              </form>
+              )}
             </div>
           </div>
         </div>

@@ -560,10 +560,7 @@ export default function UsersPage() {
                         accept="image/*"
                         onChange={handleAvatarChange}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Chọn ảnh (tối đa 5MB). Ảnh sẽ được tự động chuyển đổi sang WebP 200x200px
-                      </p>
+                      />                    
                     </div>
                   </div>
                 </div>

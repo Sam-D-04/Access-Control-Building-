@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { cardAPI, userAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
+import { cardAPI, userAPI, permissionAPI } from '@/lib/api'
+
 
 interface Card {
   id: number
@@ -37,6 +38,19 @@ export default function CardsPage() {
     expired_at: '',
     notes: '',
   })
+    // Permission management
+  const [showPermissionModal, setShowPermissionModal] = useState(false)
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null)
+  const [cardPermissions, setCardPermissions] = useState<any[]>([])
+  const [allPermissions, setAllPermissions] = useState<any[]>([])
+  const [loadingPermissions, setLoadingPermissions] = useState(false)
+  const [newPermissionData, setNewPermissionData] = useState({
+    permission_id: '',
+    additional_door_ids: '',
+    valid_from: '',
+    valid_until: '',
+  })
+
 
   // Lọc
   const [filterUser, setFilterUser] = useState('')
@@ -174,6 +188,89 @@ export default function CardsPage() {
       toast.error(error.response?.data?.message || 'Không thể xóa thẻ')
     }
   }
+  
+  // Permission functions
+  const handleOpenPermissionModal = async (card: Card) => {
+    setSelectedCard(card)
+    setShowPermissionModal(true)
+    setLoadingPermissions(true)
+    
+    try {
+      // Fetch card permissions
+      const cpResponse = await permissionAPI.getCardPermissions(card.id)
+      setCardPermissions(cpResponse.data.data)
+      
+      // Fetch all permissions
+      const allResponse = await permissionAPI.getAll(true) // active only
+      setAllPermissions(allResponse.data.data)
+    } catch (error) {
+      console.error('Error fetching permissions:', error)
+      toast.error('Không thể tải danh sách phân quyền')
+    } finally {
+      setLoadingPermissions(false)
+    }
+  }
+
+  const handleAddPermission = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedCard) return
+
+    try {
+      const data: any = {
+        permission_id: parseInt(newPermissionData.permission_id),
+      }
+
+      if (newPermissionData.additional_door_ids) {
+        data.additional_door_ids = newPermissionData.additional_door_ids
+          .split(',')
+          .map(id => parseInt(id.trim()))
+          .filter(id => !isNaN(id))
+      }
+
+      if (newPermissionData.valid_from) {
+        data.valid_from = new Date(newPermissionData.valid_from).toISOString()
+      }
+
+      if (newPermissionData.valid_until) {
+        data.valid_until = new Date(newPermissionData.valid_until).toISOString()
+      }
+
+      await permissionAPI.assignToCard(selectedCard.id, data)
+      toast.success('Thêm phân quyền thành công')
+      
+      // Refresh
+      const cpResponse = await permissionAPI.getCardPermissions(selectedCard.id)
+      setCardPermissions(cpResponse.data.data)
+      
+      // Reset form
+      setNewPermissionData({
+        permission_id: '',
+        additional_door_ids: '',
+        valid_from: '',
+        valid_until: '',
+      })
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
+    }
+  }
+
+  const handleRemovePermission = async (cardPermissionId: number) => {
+    if (!confirm('Xóa phân quyền này khỏi thẻ?')) return
+
+    try {
+      await permissionAPI.removeFromCard(cardPermissionId)
+      toast.success('Xóa phân quyền thành công')
+      
+      // Refresh
+      if (selectedCard) {
+        const cpResponse = await permissionAPI.getCardPermissions(selectedCard.id)
+        setCardPermissions(cpResponse.data.data)
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Không thể xóa phân quyền')
+    }
+  }
+
 
   // Filtered cards
   const filteredCards = cards.filter((card) => {
@@ -344,6 +441,16 @@ export default function CardsPage() {
                             )}
                           </svg>
                         </button>
+                                                <button
+                          onClick={() => handleOpenPermissionModal(card)}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                          title="Quản lý phân quyền"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                        </button>
+
                         <button
                           onClick={() => handleOpenModal(card)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
@@ -405,122 +512,149 @@ export default function CardsPage() {
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
+            {/* Card Permissions Modal */}
+      {showPermissionModal && selectedCard && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h2 className="text-2xl font-bold">
-                {editingCard ? 'Sửa thẻ' : 'Thêm thẻ mới'}
-              </h2>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Card UID */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-2">Card UID *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.card_uid}
-
-                    onChange={(e) => handleCardUidChange(e.target.value)}
-                    placeholder="CARD-XXX-XXX-XXX"
-                    maxLength={17}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500 font-mono text-sm md:text-base"
-                  />
-          
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Quản lý Phân quyền</h2>
+                  <p className="text-gray-600">Thẻ: {selectedCard.card_uid}</p>
                 </div>
+                <button
+                  onClick={() => setShowPermissionModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-                {/* User */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-2">Gán cho nhân viên *</label>
-                  <select
-                    required
-                    value={formData.user_id}
-                    onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                  >
-                    <option value="">Chọn nhân viên</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.full_name} ({user.employee_id})
-                      </option>
+              {/* Current Permissions */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Phân quyền hiện tại</h3>
+                {loadingPermissions ? (
+                  <div className="text-center py-4 text-gray-500">Đang tải...</div>
+                ) : cardPermissions.length === 0 ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+                    Thẻ chưa được gán phân quyền nào
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {cardPermissions.map((cp: any) => (
+                      <div key={cp.id} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">{cp.permission_name}</div>
+                          <div className="text-sm text-gray-600">{cp.permission_description}</div>
+                          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                            <span>Ưu tiên: {cp.priority}</span>
+                            {cp.valid_from && (
+                              <span>Từ: {new Date(cp.valid_from).toLocaleDateString('vi-VN')}</span>
+                            )}
+                            {cp.valid_until && (
+                              <span>Đến: {new Date(cp.valid_until).toLocaleDateString('vi-VN')}</span>
+                            )}
+                          </div>
+                          {cp.additional_door_ids && cp.additional_door_ids.length > 0 && (
+                            <div className="mt-1 text-xs text-blue-600">
+                              + Thêm cửa: {cp.additional_door_ids.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleRemovePermission(cp.id)}
+                          className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Xóa"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     ))}
-                  </select>
-                </div>
+                  </div>
+                )}
+              </div>
 
-                {/* Issued At */}
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Ngày cấp *</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.issued_at}
-                    onChange={(e) => setFormData({ ...formData, issued_at: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
+              {/* Add New Permission */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Thêm phân quyền mới</h3>
+                <form onSubmit={handleAddPermission} className="space-y-4">
+                  {/* Select Permission */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Chọn phân quyền <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={newPermissionData.permission_id}
+                      onChange={(e) => setNewPermissionData({ ...newPermissionData, permission_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    >
+                      <option value="">-- Chọn phân quyền --</option>
+                      {allPermissions.map((perm: any) => (
+                        <option key={perm.id} value={perm.id}>
+                          {perm.name} (Priority: {perm.priority})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Expired At */}
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Ngày hết hạn</label>
-                  <input
-                    type="date"
-                    value={formData.expired_at}
-                    onChange={(e) => setFormData({ ...formData, expired_at: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                    placeholder="Để trống = vĩnh viễn"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Để trống nếu thẻ không hết hạn</p>
-                </div>
-
-                {/* Notes */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-2">Ghi chú</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                    placeholder="Ghi chú về thẻ..."
-                  />
-                </div>
-
-                {/* Active Status */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  {/* Additional Doors */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cửa bổ sung (ID, cách nhau bởi dấu phẩy)
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="w-4 h-4"
+                      type="text"
+                      value={newPermissionData.additional_door_ids}
+                      onChange={(e) => setNewPermissionData({ ...newPermissionData, additional_door_ids: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      placeholder="VD: 7,8,9"
                     />
-                    <span className="text-sm font-semibold">Kích hoạt thẻ</span>
-                  </label>
-                </div>
-              </div>
+                    <p className="text-xs text-gray-500 mt-1">Thêm quyền truy cập cho các cửa này (ngoài quyền gốc)</p>
+                  </div>
 
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold"
-                >
-                  {editingCard ? 'Cập nhật' : 'Thêm mới'}
-                </button>
+                  {/* Valid From/Until */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Hiệu lực từ</label>
+                      <input
+                        type="datetime-local"
+                        value={newPermissionData.valid_from}
+                        onChange={(e) => setNewPermissionData({ ...newPermissionData, valid_from: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Hiệu lực đến</label>
+                      <input
+                        type="datetime-local"
+                        value={newPermissionData.valid_until}
+                        onChange={(e) => setNewPermissionData({ ...newPermissionData, valid_until: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={!newPermissionData.permission_id}
+                    className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Thêm phân quyền
+                  </button>
+                </form>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
+
+      
     </DashboardLayout>
   )
 }

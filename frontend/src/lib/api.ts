@@ -99,9 +99,12 @@ export const doorAPI = {
 // DEPARTMENT APIs
 
 export const departmentAPI = {
-  getAll: (withCount?: boolean) =>
-    api.get('/departments', { params: withCount ? { with_count: 'true' } : {} }),
+  getAll: () => api.get('/departments'),
   getById: (id: number) => api.get(`/departments/${id}`),
+  create: (data: any) => api.post('/departments', data),
+  update: (id: number, data: any) => api.put(`/departments/${id}`, data),
+  delete: (id: number) => api.delete(`/departments/${id}`),
+  getChildren: (id: number) => api.get(`/departments/${id}/children`),
 }
 
 
