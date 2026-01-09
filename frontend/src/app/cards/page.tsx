@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 
 interface Card {
   id: number
-  card_number: string
+  card_uid: string
   user_id: number
   user_name?: string
   user_email?: string
@@ -53,7 +53,7 @@ export default function CardsPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingCard, setEditingCard] = useState<Card | null>(null)
   const [formData, setFormData] = useState({
-    card_number: '',
+    card_uid: '',
     user_id: '',
     issue_date: new Date().toISOString().split('T')[0],
     expiry_date: '',
@@ -105,7 +105,7 @@ export default function CardsPage() {
     if (card) {
       setEditingCard(card)
       setFormData({
-        card_number: card.card_number,
+        card_uid: card.card_uid,
         user_id: card.user_id.toString(),
         issue_date: card.issue_date.split('T')[0],
         expiry_date: card.expiry_date ? card.expiry_date.split('T')[0] : '',
@@ -114,7 +114,7 @@ export default function CardsPage() {
     } else {
       setEditingCard(null)
       setFormData({
-        card_number: '',
+        card_uid: '',
         user_id: '',
         issue_date: new Date().toISOString().split('T')[0],
         expiry_date: '',
@@ -154,7 +154,7 @@ export default function CardsPage() {
   }
 
   const handleDelete = async (card: Card) => {
-    if (!confirm(`Xóa thẻ ${card.card_number}?`)) return
+    if (!confirm(`Xóa thẻ ${card.card_uid}?`)) return
 
     try {
       await cardAPI.delete(card.id)
@@ -189,7 +189,7 @@ export default function CardsPage() {
     const matchStatus = !filterStatus || 
       (filterStatus === 'active' ? card.is_active : !card.is_active)
     const matchSearch = !searchTerm ||
-      card.card_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.card_uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
       card.user_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
     return matchStatus && matchSearch
@@ -285,7 +285,7 @@ export default function CardsPage() {
                         <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
-                        <span className="font-semibold text-gray-800">{card.card_number}</span>
+                        <span className="font-semibold text-gray-800">{card.card_uid}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -404,8 +404,8 @@ export default function CardsPage() {
                   <input
                     type="text"
                     required
-                    value={formData.card_number}
-                    onChange={(e) => setFormData({ ...formData, card_number: e.target.value })}
+                    value={formData.card_uid}
+                    onChange={(e) => setFormData({ ...formData, card_uid: e.target.value })}
                     placeholder="VD: CARD001"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
                   />
@@ -495,7 +495,7 @@ export default function CardsPage() {
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold">
-                Quản lý phân quyền - Thẻ {selectedCard.card_number}
+                Quản lý phân quyền - Thẻ {selectedCard.card_uid}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Người dùng: {selectedCard.user_name}

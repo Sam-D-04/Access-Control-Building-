@@ -1,6 +1,5 @@
 const { executeQuery, getOneRow } = require('../config/database');
 
-
  // Tìm permission theo ID
 async function findPermissionById(permissionId) {
     const sql = `
