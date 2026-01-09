@@ -2,15 +2,7 @@ const { executeQuery, getOneRow } = require('../config/database');
 
 // tìm cửa theo ID
 async function findDoorById(doorId) {
-    const sql = `
-        SELECT
-            d.*,
-            dept.name as department_name
-        FROM doors d
-        LEFT JOIN departments dept ON d.department_id = dept.id
-        WHERE d.id = ?
-    `;
-
+    const sql = 'SELECT * FROM doors WHERE id = ?';
     const door = await getOneRow(sql, [doorId]);
     return door;
 }
@@ -19,54 +11,18 @@ async function findDoorById(doorId) {
 async function getAllDoors() {
     const sql = `
         SELECT
-            d.id,
-            d.name,
-            d.location,
-            d.access_level,
-            d.department_id,
-            d.is_locked,
-            d.is_active,
-            d.created_at,
-            dept.name as department_name
-        FROM doors d
-        LEFT JOIN departments dept ON d.department_id = dept.id
-        WHERE d.is_active = TRUE
-        ORDER BY d.id ASC
+            id,
+            name,
+            location,
+            is_locked,
+            is_active,
+            created_at
+        FROM doors
+        WHERE is_active = TRUE
+        ORDER BY id ASC
     `;
 
     const doors = await executeQuery(sql, []);
-    return doors;
-}
-
-// lấy cửa theo access level (all, department, vip)
-async function getDoorsByAccessLevel(accessLevel) {
-    const sql = `
-        SELECT
-            d.*,
-            dept.name as department_name
-        FROM doors d
-        LEFT JOIN departments dept ON d.department_id = dept.id
-        WHERE d.access_level = ? AND d.is_active = TRUE
-        ORDER BY d.id ASC
-    `;
-
-    const doors = await executeQuery(sql, [accessLevel]);
-    return doors;
-}
-
-// lấy cửa theo phòng ban
-async function getDoorsByDepartment(departmentId) {
-    const sql = `
-        SELECT
-            d.*,
-            dept.name as department_name
-        FROM doors d
-        LEFT JOIN departments dept ON d.department_id = dept.id
-        WHERE d.department_id = ? AND d.is_active = TRUE
-        ORDER BY d.id ASC
-    `;
-
-    const doors = await executeQuery(sql, [departmentId]);
     return doors;
 }
 
@@ -76,18 +32,14 @@ async function createDoor(doorData) {
         INSERT INTO doors (
             name,
             location,
-            access_level,
-            department_id,
             is_locked,
             is_active
-        ) VALUES (?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?)
     `;
 
     const params = [
         doorData.name,
         doorData.location || null,
-        doorData.access_level || 'all',
-        doorData.department_id || null,
         doorData.is_locked !== undefined ? doorData.is_locked : false,
         doorData.is_active !== undefined ? doorData.is_active : true
     ];
@@ -109,16 +61,6 @@ async function updateDoor(doorId, doorData) {
     if (doorData.location !== undefined) {
         updateFields.push('location = ?');
         params.push(doorData.location);
-    }
-
-    if (doorData.access_level) {
-        updateFields.push('access_level = ?');
-        params.push(doorData.access_level);
-    }
-
-    if (doorData.department_id !== undefined) {
-        updateFields.push('department_id = ?');
-        params.push(doorData.department_id);
     }
 
     if (doorData.is_locked !== undefined) {
@@ -174,8 +116,6 @@ async function permanentDeleteDoor(doorId) {
 module.exports = {
     findDoorById,
     getAllDoors,
-    getDoorsByAccessLevel,
-    getDoorsByDepartment,
     createDoor,
     updateDoor,
     lockDoor,

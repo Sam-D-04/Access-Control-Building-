@@ -2,44 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { doorAPI, departmentAPI } from '@/lib/api'
+import { doorAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 interface Door {
   id: number
   name: string
   location: string
-  access_level: string
-  department_id: number | null
-  department_name?: string
   is_locked: boolean
   is_active: boolean
 }
 
-interface Department {
-  id: number
-  name: string
-  description: string
-}
-
 export default function DoorsPage() {
   const [doors, setDoors] = useState<Door[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingDoor, setEditingDoor] = useState<Door | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     location: '',
-    access_level: 'all',
-    department_id: '',
     is_locked: false,
     is_active: true,
   })
 
   // Filters
-  const [filterAccessLevel, setFilterAccessLevel] = useState('')
-  const [filterDepartment, setFilterDepartment] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -49,7 +35,6 @@ export default function DoorsPage() {
 
   useEffect(() => {
     fetchDoors()
-    fetchDepartments()
   }, [])
 
   const fetchDoors = async () => {
@@ -64,23 +49,12 @@ export default function DoorsPage() {
     }
   }
 
-  const fetchDepartments = async () => {
-    try {
-      const response = await departmentAPI.getAll()
-      setDepartments(response.data.data)
-    } catch (error) {
-      console.error('Error fetching departments:', error)
-    }
-  }
-
   const handleOpenModal = (door?: Door) => {
     if (door) {
       setEditingDoor(door)
       setFormData({
         name: door.name,
         location: door.location,
-        access_level: door.access_level,
-        department_id: door.department_id?.toString() || '',
         is_locked: door.is_locked,
         is_active: door.is_active,
       })
@@ -89,8 +63,6 @@ export default function DoorsPage() {
       setFormData({
         name: '',
         location: '',
-        access_level: 'all',
-        department_id: '',
         is_locked: false,
         is_active: true,
       })
@@ -106,15 +78,10 @@ export default function DoorsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const data = {
-        ...formData,
-        department_id: formData.department_id ? parseInt(formData.department_id) : null,
-      }
-
       if (editingDoor) {
-        await doorAPI.update(editingDoor.id, data)
+        await doorAPI.update(editingDoor.id, formData)
       } else {
-        await doorAPI.create(data)
+        await doorAPI.create(formData)
       }
 
       fetchDoors()
@@ -150,14 +117,12 @@ export default function DoorsPage() {
 
   // Filtered doors
   const filteredDoors = doors.filter((door) => {
-    const matchAccessLevel = !filterAccessLevel || door.access_level === filterAccessLevel
-    const matchDepartment = !filterDepartment || door.department_id?.toString() === filterDepartment
     const matchStatus = !filterStatus || (filterStatus === 'locked' ? door.is_locked : !door.is_locked)
     const matchSearch = !searchTerm ||
       door.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       door.location.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchAccessLevel && matchDepartment && matchStatus && matchSearch
+    return matchStatus && matchSearch
   })
 
   // Paginated doors
@@ -170,24 +135,11 @@ export default function DoorsPage() {
     setCurrentPage(pageNumber)
   }
 
-  const getAccessLevelBadge = (level: string) => {
-    switch (level) {
-      case 'all':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Tất cả</span>
-      case 'department':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Phòng ban</span>
-      case 'vip':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">VIP</span>
-      default:
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{level}</span>
-    }
-  }
-
   return (
     <DashboardLayout title="Quản lý cửa ra vào">
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
           <div>
             <input
@@ -197,36 +149,6 @@ export default function DoorsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
             />
-          </div>
-
-          {/* Access Level Filter */}
-          <div>
-            <select
-              value={filterAccessLevel}
-              onChange={(e) => setFilterAccessLevel(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-            >
-              <option value="">Tất cả quyền truy cập</option>
-              <option value="all">Tất cả (all)</option>
-              <option value="department">Phòng ban (department)</option>
-              <option value="vip">VIP</option>
-            </select>
-          </div>
-
-          {/* Department Filter */}
-          <div>
-            <select
-              value={filterDepartment}
-              onChange={(e) => setFilterDepartment(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-            >
-              <option value="">Tất cả phòng ban</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Lock Status Filter */}
@@ -270,12 +192,6 @@ export default function DoorsPage() {
                     Vị trí
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                    Quyền truy cập
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                    Phòng ban
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                     Trạng thái
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
@@ -296,14 +212,6 @@ export default function DoorsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">{door.location}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getAccessLevelBadge(door.access_level)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-700">
-                        {door.department_name || '-'}
-                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -403,9 +311,9 @@ export default function DoorsPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {/* Name */}
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-semibold mb-2">Tên cửa *</label>
                   <input
                     type="text"
@@ -418,7 +326,7 @@ export default function DoorsPage() {
                 </div>
 
                 {/* Location */}
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-semibold mb-2">Vị trí *</label>
                   <input
                     type="text"
@@ -430,68 +338,44 @@ export default function DoorsPage() {
                   />
                 </div>
 
-                {/* Access Level */}
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Quyền truy cập *</label>
-                  <select
-                    required
-                    value={formData.access_level}
-                    onChange={(e) => setFormData({ ...formData, access_level: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                  >
-                    <option value="all">Tất cả (all)</option>
-                    <option value="department">Phòng ban (department)</option>
-                    <option value="vip">VIP (manager/director)</option>
-                  </select>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-sm text-blue-700">
+                      <strong>Lưu ý:</strong> Quyền truy cập cửa hiện được quản lý hoàn toàn qua hệ thống <strong>Phân quyền</strong>.
+                      Hãy tạo permission và gán cho card để kiểm soát ai có thể vào cửa này.
+                    </div>
+                  </div>
                 </div>
 
-                {/* Department */}
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Phòng ban</label>
-                  <select
-                    value={formData.department_id}
-                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-                    disabled={formData.access_level !== 'department'}
-                  >
-                    <option value="">Không phân phòng</option>
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
-                  {formData.access_level === 'department' && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Bắt buộc chọn phòng ban khi access_level = department
-                    </p>
-                  )}
-                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Locked Status */}
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_locked}
+                        onChange={(e) => setFormData({ ...formData, is_locked: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-semibold">Khóa cửa (Emergency)</span>
+                    </label>
+                  </div>
 
-                {/* Locked Status */}
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_locked}
-                      onChange={(e) => setFormData({ ...formData, is_locked: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-semibold">Khóa cửa (Emergency)</span>
-                  </label>
-                </div>
-
-                {/* Active Status */}
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-semibold">Kích hoạt cửa</span>
-                  </label>
+                  {/* Active Status */}
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_active}
+                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-semibold">Kích hoạt cửa</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
