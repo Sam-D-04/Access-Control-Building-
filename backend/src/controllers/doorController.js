@@ -1,6 +1,7 @@
 const {
     findDoorById,
     getAllDoors,
+    getDoorsByDepartment,
     createDoor,
     updateDoor,
     lockDoor: lockDoorModel,
@@ -13,7 +14,16 @@ const { publishMessage } = require('../config/mqtt');
 // GET /api/doors - Lấy danh sách tất cả cửa
 async function getDoorsHandler(req, res, next) {
     try {
-        const doors = await getAllDoors();
+        const { department_id } = req.query;
+
+        let doors;
+
+        // Filter theo department_id nếu có
+        if (department_id) {
+            doors = await getDoorsByDepartment(department_id);
+        } else {
+            doors = await getAllDoors();
+        }
 
         return res.json({
             success: true,
@@ -55,7 +65,7 @@ async function getDoorByIdHandler(req, res, next) {
 // POST /api/doors - Tạo cửa mới
 async function createDoorHandler(req, res, next) {
     try {
-        const { name, location, is_locked, is_active } = req.body;
+        const { name, location, department_id, is_locked, is_active } = req.body;
 
         // Validate required fields
         if (!name) {
@@ -68,13 +78,14 @@ async function createDoorHandler(req, res, next) {
         const doorData = {
             name,
             location,
+            department_id: department_id || null,
             is_locked: is_locked !== undefined ? is_locked : false,
             is_active: is_active !== undefined ? is_active : true
         };
 
         const newDoor = await createDoor(doorData);
 
-        console.log('Door created:', newDoor.id, newDoor.name);
+        console.log('Door created:', newDoor.id, newDoor.name, 'Department:', newDoor.department_name || 'None');
 
         return res.status(201).json({
             success: true,
@@ -92,7 +103,7 @@ async function createDoorHandler(req, res, next) {
 async function updateDoorHandler(req, res, next) {
     try {
         const doorId = req.params.id;
-        const { name, location, is_locked, is_active } = req.body;
+        const { name, location, department_id, is_locked, is_active } = req.body;
 
         // Kiểm tra cửa có tồn tại không
         const existingDoor = await findDoorById(doorId);
@@ -106,6 +117,7 @@ async function updateDoorHandler(req, res, next) {
         const doorData = {};
         if (name !== undefined) doorData.name = name;
         if (location !== undefined) doorData.location = location;
+        if (department_id !== undefined) doorData.department_id = department_id;
         if (is_locked !== undefined) doorData.is_locked = is_locked;
         if (is_active !== undefined) doorData.is_active = is_active;
 

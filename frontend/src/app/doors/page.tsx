@@ -2,30 +2,41 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { doorAPI } from '@/lib/api'
+import { doorAPI, departmentAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 interface Door {
   id: number
   name: string
   location: string
+  department_id: number | null
+  department_name?: string
   is_locked: boolean
   is_active: boolean
 }
 
+interface Department {
+  id: number
+  name: string
+  description: string
+}
+
 export default function DoorsPage() {
   const [doors, setDoors] = useState<Door[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingDoor, setEditingDoor] = useState<Door | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     location: '',
+    department_id: '',
     is_locked: false,
     is_active: true,
   })
 
   // Filters
+  const [filterDepartment, setFilterDepartment] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -35,6 +46,7 @@ export default function DoorsPage() {
 
   useEffect(() => {
     fetchDoors()
+    fetchDepartments()
   }, [])
 
   const fetchDoors = async () => {
@@ -44,8 +56,18 @@ export default function DoorsPage() {
       setDoors(response.data.data)
     } catch (error) {
       console.error('Error fetching doors:', error)
+      toast.error('Không thể tải danh sách cửa')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await departmentAPI.getAll()
+      setDepartments(response.data.data)
+    } catch (error) {
+      console.error('Error fetching departments:', error)
     }
   }
 
@@ -55,6 +77,7 @@ export default function DoorsPage() {
       setFormData({
         name: door.name,
         location: door.location,
+        department_id: door.department_id?.toString() || '',
         is_locked: door.is_locked,
         is_active: door.is_active,
       })
@@ -63,6 +86,7 @@ export default function DoorsPage() {
       setFormData({
         name: '',
         location: '',
+        department_id: '',
         is_locked: false,
         is_active: true,
       })
@@ -78,10 +102,17 @@ export default function DoorsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const data = {
+        ...formData,
+        department_id: formData.department_id ? parseInt(formData.department_id) : null,
+      }
+
       if (editingDoor) {
-        await doorAPI.update(editingDoor.id, formData)
+        await doorAPI.update(editingDoor.id, data)
+        toast.success('Cập nhật cửa thành công')
       } else {
-        await doorAPI.create(formData)
+        await doorAPI.create(data)
+        toast.success('Tạo cửa mới thành công')
       }
 
       fetchDoors()
@@ -95,8 +126,10 @@ export default function DoorsPage() {
     try {
       if (door.is_locked) {
         await doorAPI.unlock(door.id)
+        toast.success('Đã mở khóa cửa')
       } else {
         await doorAPI.lock(door.id)
+        toast.success('Đã khóa cửa')
       }
       fetchDoors()
     } catch (error: any) {
@@ -109,6 +142,7 @@ export default function DoorsPage() {
 
     try {
       await doorAPI.delete(door.id)
+      toast.success('Xóa cửa thành công')
       fetchDoors()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa cửa')
@@ -117,12 +151,13 @@ export default function DoorsPage() {
 
   // Filtered doors
   const filteredDoors = doors.filter((door) => {
+    const matchDepartment = !filterDepartment || door.department_id?.toString() === filterDepartment
     const matchStatus = !filterStatus || (filterStatus === 'locked' ? door.is_locked : !door.is_locked)
     const matchSearch = !searchTerm ||
       door.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       door.location.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchStatus && matchSearch
+    return matchDepartment && matchStatus && matchSearch
   })
 
   // Paginated doors
@@ -139,7 +174,7 @@ export default function DoorsPage() {
     <DashboardLayout title="Quản lý cửa ra vào">
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div>
             <input
@@ -149,6 +184,22 @@ export default function DoorsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
             />
+          </div>
+
+          {/* Department Filter */}
+          <div>
+            <select
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+            >
+              <option value="">Tất cả phòng ban</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Lock Status Filter */}
@@ -165,8 +216,7 @@ export default function DoorsPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex justify-between items-center">
-      
+        <div className="mt-4">
           <button
             onClick={() => handleOpenModal()}
             className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold"
@@ -192,6 +242,9 @@ export default function DoorsPage() {
                     Vị trí
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                    Phòng ban
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                     Trạng thái
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
@@ -212,6 +265,15 @@ export default function DoorsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">{door.location}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {door.department_name ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                          {door.department_name}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">Chưa gán</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -338,14 +400,34 @@ export default function DoorsPage() {
                   />
                 </div>
 
+                {/* Department Selection */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Phòng ban</label>
+                  <select
+                    value={formData.department_id}
+                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="">-- Không gán phòng ban --</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Cửa này sẽ thuộc về phòng ban được chọn (không bắt buộc)
+                  </p>
+                </div>
+
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start gap-2">
                     <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div className="text-sm text-blue-700">
-                      <strong>Lưu ý:</strong> Quyền truy cập cửa hiện được quản lý hoàn toàn qua hệ thống <strong>Phân quyền</strong>.
-                      Hãy tạo permission và gán cho card để kiểm soát ai có thể vào cửa này.
+                      <strong>Lưu ý:</strong> Quyền truy cập cửa được quản lý qua hệ thống <strong>Phân quyền</strong>.
+                      Phòng ban chỉ để phân loại và quản lý cửa thuận tiện hơn.
                     </div>
                   </div>
                 </div>
