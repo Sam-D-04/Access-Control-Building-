@@ -167,21 +167,6 @@ router.get('/visitors/stats', authenticateToken, requireRole('admin', 'security'
 // PERMISSION ROUTES - /api/permissions
 // ===============================================
 
-// GET /api/permissions - Lấy danh sách tất cả permission templates
-router.get('/permissions', authenticateToken, requireRole('admin'), permissionController.getAllPermissionsHandler);
-
-// GET /api/permissions/:id - Lấy chi tiết một permission template
-router.get('/permissions/:id', authenticateToken, requireRole('admin'), permissionController.getPermissionByIdHandler);
-
-// POST /api/permissions - Tạo permission template mới
-router.post('/permissions', authenticateToken, requireRole('admin'), permissionController.createPermissionHandler);
-
-// PUT /api/permissions/:id - Cập nhật permission template
-router.put('/permissions/:id', authenticateToken, requireRole('admin'), permissionController.updatePermissionHandler);
-
-// DELETE /api/permissions/:id - Xóa permission template
-router.delete('/permissions/:id', authenticateToken, requireRole('admin'), permissionController.deletePermissionHandler);
-
 // GET /api/permissions/:id/cards - Lấy danh sách cards có permission này
 router.get('/permissions/:id/cards', authenticateToken, requireRole('admin', 'security'), permissionController.getCardsByPermissionHandler);
 
@@ -199,9 +184,6 @@ router.delete('/card-permissions/:id', authenticateToken, requireRole('admin'), 
 
 // DELETE /api/cards/:cardId/permissions - Xóa TẤT CẢ permissions của card
 router.delete('/cards/:cardId/permissions', authenticateToken, requireRole('admin'), permissionController.removeAllCardPermissionsHandler);
-
-
-
 
 
 module.exports = router;

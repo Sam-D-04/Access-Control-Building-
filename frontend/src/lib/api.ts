@@ -117,7 +117,7 @@ export const permissionAPI = {
   create: (data: any) => api.post('/permissions', data),
   update: (id: number, data: any) => api.put(`/permissions/${id}`, data),
   delete: (id: number, hardDelete?: boolean) =>
-    api.delete(`/permissions/${id}`, { params: hardDelete ? { hard_delete: true } : {} }),
+    api.delete(`/permissions/${id}`, { params: hardDelete ? { hard_delete: false } : {hard_delete: true} }),
   getCards: (id: number) => api.get(`/permissions/${id}/cards`),
 
   // Card Permission Assignment

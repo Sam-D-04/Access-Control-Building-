@@ -361,27 +361,42 @@ async function updateCardPermissionHandler(req, res, next) {
     }
 }
 
-// DELETE /api/card-permissions/:id - Xóa một permission assignment khỏi card
-async function removePermissionFromCardHandler(req, res, next) {
+// DELETE /api/card-permissions/:id - Xóa quyền đã gán cho card
+async function removeCardPermissionHandler(req, res, next) {
     try {
         const cardPermissionId = req.params.id;
 
-        const deleted = await removePermissionFromCard(cardPermissionId);
+        // Kiểm tra card permission có tồn tại không
+        const cardPermission = await getOneRow(
+            'SELECT * FROM card_permissions WHERE id = ?',
+            [cardPermissionId]
+        );
 
-        if (!deleted) {
+        if (!cardPermission) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy card_permission'
+                message: 'Không tìm thấy card permission'
             });
         }
 
+        const deleted = await Permission.removePermissionFromCard(cardPermissionId);
+
+        if (!deleted) {
+            return res.status(500).json({
+                success: false,
+                message: 'Xóa quyền thất bại'
+            });
+        }
+
+        console.log('Card permission removed:', cardPermissionId);
+
         return res.json({
             success: true,
-            message: 'Xóa permission khỏi card thành công'
+            message: 'Đã xóa quyền thành công'
         });
 
     } catch (error) {
-        console.error('Error in removePermissionFromCardHandler:', error);
+        console.error('Error in removeCardPermissionHandler:', error);
         next(error);
     }
 }
@@ -445,7 +460,6 @@ module.exports = {
     getCardPermissionsHandler,
     assignPermissionToCardHandler,
     updateCardPermissionHandler,
-    removePermissionFromCardHandler,
     removeAllCardPermissionsHandler,
     getCardsByPermissionHandler
 };

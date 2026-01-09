@@ -249,8 +249,24 @@ async function updateCardPermission(cardPermissionId, updateData) {
 }
 
 async function removePermissionFromCard(cardPermissionId) {
-    const sql = `DELETE FROM card_permissions WHERE id = ?`;
+    const sql = 'DELETE FROM card_permissions WHERE id = ?';
     const result = await executeQuery(sql, [cardPermissionId]);
+    return result.affectedRows > 0;
+}
+async function deletePermission(permissionId) {
+    // Kiểm tra xem permission có đang được sử dụng không
+    const usageCheck = await getOneRow(
+        'SELECT COUNT(*) as count FROM card_permissions WHERE permission_id = ?',
+        [permissionId]
+    );
+
+    if (usageCheck.count > 0) {
+        throw new Error(`Không thể xóa permission này vì đang có ${usageCheck.count} thẻ sử dụng`);
+    }
+
+    // Hard delete nếu không có ai dùng
+    const sql = 'DELETE FROM permissions WHERE id = ?';
+    const result = await executeQuery(sql, [permissionId]);
     return result.affectedRows > 0;
 }
 

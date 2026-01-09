@@ -214,7 +214,7 @@ export default function PermissionsPage() {
     }
   }
 
-  const handleDelete = async (id: number,hardDelete = true) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa phân quyền này?')) return
 
     try {
