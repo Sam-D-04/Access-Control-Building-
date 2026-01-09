@@ -102,27 +102,28 @@ export default function CardsPage() {
   }
 
   const handleOpenModal = (card?: Card) => {
-    if (card) {
-      setEditingCard(card)
-      setFormData({
-        card_uid: card.card_uid,
-        user_id: card.user_id.toString(),
-        issue_date: card.issue_date.split('T')[0],
-        expiry_date: card.expiry_date ? card.expiry_date.split('T')[0] : '',
-        is_active: card.is_active,
-      })
-    } else {
-      setEditingCard(null)
-      setFormData({
-        card_uid: '',
-        user_id: '',
-        issue_date: new Date().toISOString().split('T')[0],
-        expiry_date: '',
-        is_active: true,
-      })
-    }
-    setShowModal(true)
+  if (card) {
+    setEditingCard(card)
+    setFormData({
+      card_uid: card.card_uid || '',
+      user_id: card.user_id.toString(),
+      issue_date: card.issue_date ? card.issue_date.split('T')[0] : new Date().toISOString().split('T')[0],
+      expiry_date: card.expiry_date ? card.expiry_date.split('T')[0] : '',
+      is_active: card.is_active,
+    })
+  } else {
+    setEditingCard(null)
+    setFormData({
+      card_uid: '',
+      user_id: '',
+      issue_date: new Date().toISOString().split('T')[0],
+      expiry_date: '',
+      is_active: true,
+    })
   }
+  setShowModal(true)
+}
+
 
   const handleCloseModal = () => {
     setShowModal(false)
@@ -130,35 +131,28 @@ export default function CardsPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  try {
-    const data = {
-      card_uid: formData.card_uid,
-      user_id: parseInt(formData.user_id),
-      issue_date: formData.issue_date,
-      expiry_date: formData.expiry_date || null,
-      is_active: formData.is_active,
+    e.preventDefault()
+    try {
+      const data = {
+        ...formData,
+        user_id: parseInt(formData.user_id),
+        expiry_date: formData.expiry_date || null,
+      }
+
+      if (editingCard) {
+        await cardAPI.update(editingCard.id, data)
+        toast.success('Cập nhật thẻ thành công')
+      } else {
+        await cardAPI.create(data)
+        toast.success('Tạo thẻ mới thành công')
+      }
+
+      fetchCards()
+      handleCloseModal()
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
     }
-
-    console.log('Submitting card data:', data) // Debug log
-
-    if (editingCard) {
-      console.log('Updating card ID:', editingCard.id) // Debug log
-      await cardAPI.update(editingCard.id, data)
-      toast.success('Cập nhật thẻ thành công')
-    } else {
-      await cardAPI.create(data)
-      toast.success('Tạo thẻ mới thành công')
-    }
-
-    fetchCards()
-    handleCloseModal()
-  } catch (error: any) {
-    console.error('Error submitting card:', error)
-    console.error('Error response:', error.response?.data) // Debug log
-    toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
   }
-}
 
   const handleDelete = async (card: Card) => {
     if (!confirm(`Xóa thẻ ${card.card_uid}?`)) return
