@@ -210,7 +210,7 @@ async function deletePermissionHandler(req, res, next) {
             });
         }
 
-        const deleted = await deletePermission(permissionId, hard_delete === 'true');
+        const deleted = await deletePermission(permissionId);
 
         if (!deleted) {
             return res.status(500).json({
@@ -448,5 +448,5 @@ module.exports = {
     assignPermissionToCardHandler,
     updateCardPermissionHandler,
     removeAllCardPermissionsHandler,
-    getCardsByPermissionHandler
+    getCardsByPermissionHandler,
 };

@@ -228,7 +228,7 @@ export default function DepartmentsPage() {
           {/* Actions */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
             <button
-              onClick={() => handleOpenModal({ ...dept, parent_id: dept.id, name: '', description: '' } as any)}
+              onClick={() => handleOpenModal(undefined, dept.id)}
               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
               title="Thêm phòng con"
             >
@@ -316,7 +316,10 @@ export default function DepartmentsPage() {
           <div className="bg-white rounded-lg max-w-lg w-full">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">
-                {editingDept && !formData.name ? 'Thêm phòng ban con' : editingDept ? 'Chỉnh sửa phòng ban' : 'Thêm phòng ban mới'}
+                {editingDept 
+                  ? 'Chỉnh sửa phòng ban' 
+                  : (formData.parent_id ? 'Thêm phòng ban con' : 'Thêm phòng ban mới')
+                }
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -373,14 +376,7 @@ export default function DepartmentsPage() {
                     type="submit"
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition"
                   >
-                    {editingDept && formData.name ? 'Cập nhật' : 'Tạo mới'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                  >
-                    Hủy
+                    {editingDept ? 'Cập nhật' : 'Tạo mới'}
                   </button>
                 </div>
               </form>
