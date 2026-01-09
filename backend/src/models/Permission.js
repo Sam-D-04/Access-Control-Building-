@@ -2,16 +2,17 @@ const { executeQuery, getOneRow } = require('../config/database');
 
  // Tìm permission theo ID
 async function findPermissionById(permissionId) {
-    const sql = `
-        SELECT * FROM permissions
-        WHERE id = ?
-    `;
-    const permission = await getOneRow(sql, [permissionId]);
+    const sql = `SELECT * FROM permissions WHERE id = ?`;
+    
+    // Dùng executeQuery thay vì getOneRow
+    const results = await executeQuery(sql, [permissionId]);
+    const permission = results.length > 0 ? results[0] : null;
 
-    // Parse JSON fields an toàn
+    // Parse JSON fields
     if (permission) {
-        permission.allowed_door_ids = safeJsonParse(permission.allowed_door_ids, []);
-        permission.time_restrictions = safeJsonParse(permission.time_restrictions, null);
+        // ... giữ nguyên logic parse JSON cũ của bạn ...
+        permission.allowed_door_ids = permission.allowed_door_ids ? JSON.parse(permission.allowed_door_ids) : [];
+        permission.time_restrictions = permission.time_restrictions ? JSON.parse(permission.time_restrictions) : null;
     }
 
     return permission;
