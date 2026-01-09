@@ -18,7 +18,13 @@ async function getAllPermissionsHandler(req, res, next) {
     try {
         const { active_only } = req.query;
 
+        console.log('Đang lấy danh sách permissions...');
+
+
         const permissions = await getAllPermissions(active_only === 'true');
+
+        console.log('Dữ liệu lấy được là: ', permissions);
+
 
         return res.json({
             success: true,
