@@ -194,7 +194,20 @@ async function updatePermissionHandler(req, res, next) {
         next(error);
     }
 }
+/**
+ * Xóa permission (soft delete hoặc hard delete)
+ */
+async function deletePermission(permissionId, hardDelete = false) {
+    let sql;
+    if (hardDelete) {
+        sql = `DELETE FROM permissions WHERE id = ?`;
+    } else {
+        sql = `UPDATE permissions SET is_active = FALSE WHERE id = ?`;
+    }
 
+    const result = await executeQuery(sql, [permissionId]);
+    return result.affectedRows > 0;
+}
 // DELETE /api/permissions/:id - Xóa permission template
 async function deletePermissionHandler(req, res, next) {
     try {

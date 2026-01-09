@@ -2,26 +2,48 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import toast from 'react-hot-toast'
 import { cardAPI, userAPI, permissionAPI } from '@/lib/api'
-
+import toast from 'react-hot-toast'
 
 interface Card {
   id: number
-  card_uid: string
-  user_id: number | null
-  user_name: string | null
+  card_number: string
+  user_id: number
+  user_name?: string
+  user_email?: string
+  department_name?: string
+  issue_date: string
+  expiry_date: string | null
   is_active: boolean
-  issued_at: string
-  expired_at: string | null
-  notes?: string
 }
 
 interface User {
   id: number
-  employee_id: string
+  username: string
   full_name: string
   email: string
+  role: string
+  department_id: number
+  department_name?: string
+}
+
+interface Permission {
+  id: number
+  name: string
+  door_access_mode: string
+  priority: number
+  is_active: boolean
+}
+
+interface CardPermission {
+  id: number
+  card_id: number
+  permission_id: number
+  permission_name: string
+  override_doors: boolean
+  valid_from: string | null
+  valid_until: string | null
+  is_active: boolean
 }
 
 export default function CardsPage() {
@@ -31,33 +53,24 @@ export default function CardsPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingCard, setEditingCard] = useState<Card | null>(null)
   const [formData, setFormData] = useState({
-    card_uid: '',
+    card_number: '',
     user_id: '',
+    issue_date: new Date().toISOString().split('T')[0],
+    expiry_date: '',
     is_active: true,
-    issued_at: new Date().toISOString().split('T')[0],
-    expired_at: '',
-    notes: '',
   })
-    // Permission management
+
+  // Permission modal states
   const [showPermissionModal, setShowPermissionModal] = useState(false)
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
-  const [cardPermissions, setCardPermissions] = useState<any[]>([])
-  const [allPermissions, setAllPermissions] = useState<any[]>([])
-  const [loadingPermissions, setLoadingPermissions] = useState(false)
-  const [newPermissionData, setNewPermissionData] = useState({
-    permission_id: '',
-    additional_door_ids: '',
-    valid_from: '',
-    valid_until: '',
-  })
+  const [cardPermissions, setCardPermissions] = useState<CardPermission[]>([])
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([])
 
-
-  // Lọc
-  const [filterUser, setFilterUser] = useState('')
+  // Filters
   const [filterStatus, setFilterStatus] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Phân trang
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
@@ -73,6 +86,7 @@ export default function CardsPage() {
       setCards(response.data.data)
     } catch (error) {
       console.error('Error fetching cards:', error)
+      toast.error('Không thể tải danh sách thẻ')
     } finally {
       setLoading(false)
     }
@@ -91,50 +105,23 @@ export default function CardsPage() {
     if (card) {
       setEditingCard(card)
       setFormData({
-        card_uid: card.card_uid,
-        user_id: card.user_id?.toString() || '',
+        card_number: card.card_number,
+        user_id: card.user_id.toString(),
+        issue_date: card.issue_date.split('T')[0],
+        expiry_date: card.expiry_date ? card.expiry_date.split('T')[0] : '',
         is_active: card.is_active,
-        issued_at: card.issued_at ? new Date(card.issued_at).toISOString().split('T')[0] : '',
-        expired_at: card.expired_at ? new Date(card.expired_at).toISOString().split('T')[0] : '',
-        notes: card.notes || '',
       })
     } else {
       setEditingCard(null)
       setFormData({
-        card_uid: 'CARD-',
+        card_number: '',
         user_id: '',
+        issue_date: new Date().toISOString().split('T')[0],
+        expiry_date: '',
         is_active: true,
-        issued_at: new Date().toISOString().split('T')[0],
-        expired_at: '',
-        notes: '',
       })
     }
     setShowModal(true)
-  }
-
-  // Format Card UID 
-  const handleCardUidChange = (value: string) => {
-    // Chỉ cho phép chữ cái, số và dấu gạch ngang
-    let cleaned = value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
-
-    // Luôn bắt đầu bằng CARD-
-    if (!cleaned.startsWith('CARD-')) {
-      cleaned = 'CARD-' + cleaned.replace(/^CARD-?/i, '')
-    }
-
-    // Lấy phần sau "CARD-"
-    const afterPrefix = cleaned.substring(5).replace(/-/g, '')
-
-    // Tự động thêm "-" mỗi 3 ký tự
-    let formatted = 'CARD-'
-    for (let i = 0; i < afterPrefix.length; i++) {
-      if (i > 0 && i % 3 === 0) {
-        formatted += '-'
-      }
-      formatted += afterPrefix[i]
-    }
-
-    setFormData({ ...formData, card_uid: formatted })
   }
 
   const handleCloseModal = () => {
@@ -147,15 +134,16 @@ export default function CardsPage() {
     try {
       const data = {
         ...formData,
-        user_id: formData.user_id ? parseInt(formData.user_id) : null,
-        issued_at: formData.issued_at ? new Date(formData.issued_at).toISOString() : new Date().toISOString(),
-        expired_at: formData.expired_at ? new Date(formData.expired_at).toISOString() : null,
+        user_id: parseInt(formData.user_id),
+        expiry_date: formData.expiry_date || null,
       }
 
       if (editingCard) {
         await cardAPI.update(editingCard.id, data)
+        toast.success('Cập nhật thẻ thành công')
       } else {
         await cardAPI.create(data)
+        toast.success('Tạo thẻ mới thành công')
       }
 
       fetchCards()
@@ -165,125 +153,49 @@ export default function CardsPage() {
     }
   }
 
-  const handleToggleActive = async (card: Card) => {
-    try {
-      if (card.is_active) {
-        await cardAPI.deactivate(card.id)
-      } else {
-        await cardAPI.activate(card.id)
-      }
-      fetchCards()
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
-    }
-  }
-
   const handleDelete = async (card: Card) => {
-    if (!confirm(`Xóa thẻ ${card.card_uid}?`)) return
+    if (!confirm(`Xóa thẻ ${card.card_number}?`)) return
 
     try {
       await cardAPI.delete(card.id)
+      toast.success('Xóa thẻ thành công')
       fetchCards()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa thẻ')
     }
   }
-  
-  // Permission functions
+
   const handleOpenPermissionModal = async (card: Card) => {
-    setSelectedCard(card)
-    setShowPermissionModal(true)
-    setLoadingPermissions(true)
-    
     try {
-      // Fetch card permissions
+      setSelectedCard(card)
       const cpResponse = await permissionAPI.getCardPermissions(card.id)
       setCardPermissions(cpResponse.data.data)
-      
-      // Fetch all permissions
-      const allResponse = await permissionAPI.getAll(true) // active only
+      const allResponse = await permissionAPI.getAll(true)
       setAllPermissions(allResponse.data.data)
+      setShowPermissionModal(true)
     } catch (error) {
       console.error('Error fetching permissions:', error)
       toast.error('Không thể tải danh sách phân quyền')
-    } finally {
-      setLoadingPermissions(false)
     }
   }
 
-  const handleAddPermission = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedCard) return
-
-    try {
-      const data: any = {
-        permission_id: parseInt(newPermissionData.permission_id),
-      }
-
-      if (newPermissionData.additional_door_ids) {
-        data.additional_door_ids = newPermissionData.additional_door_ids
-          .split(',')
-          .map(id => parseInt(id.trim()))
-          .filter(id => !isNaN(id))
-      }
-
-      if (newPermissionData.valid_from) {
-        data.valid_from = new Date(newPermissionData.valid_from).toISOString()
-      }
-
-      if (newPermissionData.valid_until) {
-        data.valid_until = new Date(newPermissionData.valid_until).toISOString()
-      }
-
-      await permissionAPI.assignToCard(selectedCard.id, data)
-      toast.success('Thêm phân quyền thành công')
-      
-      // Refresh
-      const cpResponse = await permissionAPI.getCardPermissions(selectedCard.id)
-      setCardPermissions(cpResponse.data.data)
-      
-      // Reset form
-      setNewPermissionData({
-        permission_id: '',
-        additional_door_ids: '',
-        valid_from: '',
-        valid_until: '',
-      })
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
-    }
+  const handleClosePermissionModal = () => {
+    setShowPermissionModal(false)
+    setSelectedCard(null)
   }
-
-  const handleRemovePermission = async (cardPermissionId: number) => {
-    if (!confirm('Xóa phân quyền này khỏi thẻ?')) return
-
-    try {
-      await permissionAPI.removeFromCard(cardPermissionId)
-      toast.success('Xóa phân quyền thành công')
-      
-      // Refresh
-      if (selectedCard) {
-        const cpResponse = await permissionAPI.getCardPermissions(selectedCard.id)
-        setCardPermissions(cpResponse.data.data)
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Không thể xóa phân quyền')
-    }
-  }
-
 
   // Filtered cards
   const filteredCards = cards.filter((card) => {
-    const matchUser = !filterUser || card.user_id?.toString() === filterUser
-    const matchStatus = !filterStatus || (filterStatus === 'active' ? card.is_active : !card.is_active)
+    const matchStatus = !filterStatus || 
+      (filterStatus === 'active' ? card.is_active : !card.is_active)
     const matchSearch = !searchTerm ||
-      card.card_uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (card.user_name && card.user_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      card.card_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.user_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchUser && matchStatus && matchSearch
+    return matchStatus && matchSearch
   })
 
-  // Phân trang cards
+  // Paginated cards
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentCards = filteredCards.slice(indexOfFirstItem, indexOfLastItem)
@@ -293,41 +205,20 @@ export default function CardsPage() {
     setCurrentPage(pageNumber)
   }
 
-  const isExpired = (expiredAt: string | null) => {
-    if (!expiredAt) return false
-    return new Date(expiredAt) < new Date()
-  }
-
   return (
     <DashboardLayout title="Quản lý thẻ truy cập">
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
           <div>
             <input
               type="text"
-              placeholder="Tìm kiếm Card UID, tên nhân viên"
+              placeholder="Tìm kiếm mã thẻ, tên người dùng..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
             />
-          </div>
-
-          {/* User Filter */}
-          <div>
-            <select
-              value={filterUser}
-              onChange={(e) => setFilterUser(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
-            >
-              <option value="">Tất cả nhân viên</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.full_name} ({user.employee_id})
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Status Filter */}
@@ -338,19 +229,18 @@ export default function CardsPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">Đang hoạt động</option>
+              <option value="inactive">Ngừng hoạt động</option>
             </select>
           </div>
         </div>
 
-        <div className="mt-4 flex justify-between items-center">
-
+        <div className="mt-4">
           <button
             onClick={() => handleOpenModal()}
             className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold"
           >
-             Thêm thẻ mới
+            + Thêm thẻ mới
           </button>
         </div>
       </div>
@@ -365,16 +255,19 @@ export default function CardsPage() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                    Card UID
+                    Mã thẻ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                    Nhân viên
+                    Người dùng
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                    Phòng ban
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                     Ngày cấp
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                    Hết hạn
+                    Ngày hết hạn
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                     Trạng thái
@@ -392,56 +285,38 @@ export default function CardsPage() {
                         <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
-                        <span className="font-mono font-semibold text-gray-800">{card.card_uid}</span>
+                        <span className="font-semibold text-gray-800">{card.card_number}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-700">
-                        {card.user_name || <span className="text-gray-400">Chưa gán</span>}
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">{card.user_name}</div>
+                        <div className="text-xs text-gray-500">{card.user_email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-700">{card.department_name || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-600">
+                        {new Date(card.issue_date).toLocaleDateString('vi-VN')}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
-                        {new Date(card.issued_at).toLocaleDateString('vi-VN')}
+                        {card.expiry_date ? new Date(card.expiry_date).toLocaleDateString('vi-VN') : 'Không giới hạn'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {card.expired_at ? (
-                        <span className={`text-sm ${isExpired(card.expired_at) ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                          {new Date(card.expired_at).toLocaleDateString('vi-VN')}
-                          {isExpired(card.expired_at) && ' (Hết hạn)'}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-green-600 font-semibold">Vĩnh viễn</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        card.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        card.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {card.is_active ? 'Active' : 'Inactive'}
+                        {card.is_active ? 'Hoạt động' : 'Ngừng'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleToggleActive(card)}
-                          className={`p-2 rounded-lg transition ${
-                            card.is_active
-                              ? 'text-orange-600 hover:bg-orange-50'
-                              : 'text-green-600 hover:bg-green-50'
-                          }`}
-                          title={card.is_active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {card.is_active ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                            ) : (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            )}
-                          </svg>
-                        </button>
-                                                <button
                           onClick={() => handleOpenPermissionModal(card)}
                           className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition"
                           title="Quản lý phân quyền"
@@ -450,7 +325,6 @@ export default function CardsPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                           </svg>
                         </button>
-
                         <button
                           onClick={() => handleOpenModal(card)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
@@ -512,149 +386,209 @@ export default function CardsPage() {
         )}
       </div>
 
-            {/* Card Permissions Modal */}
-      {showPermissionModal && selectedCard && (
+      {/* Add/Edit Card Modal */}
+      {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <h2 className="text-2xl font-bold">
+                {editingCard ? 'Sửa thẻ truy cập' : 'Thêm thẻ mới'}
+              </h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="space-y-4">
+                {/* Card Number */}
                 <div>
-                  <h2 className="text-2xl font-bold">Quản lý Phân quyền</h2>
-                  <p className="text-gray-600">Thẻ: {selectedCard.card_uid}</p>
+                  <label className="block text-sm font-semibold mb-2">Mã thẻ *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.card_number}
+                    onChange={(e) => setFormData({ ...formData, card_number: e.target.value })}
+                    placeholder="VD: CARD001"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+                  />
                 </div>
+
+                {/* User Selection */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Người dùng *</label>
+                  <select
+                    required
+                    value={formData.user_id}
+                    onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="">-- Chọn người dùng --</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.full_name} ({user.email}) - {user.department_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Issue Date */}
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Ngày cấp *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.issue_date}
+                      onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Expiry Date */}
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Ngày hết hạn</label>
+                    <input
+                      type="date"
+                      value={formData.expiry_date}
+                      onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Để trống nếu không giới hạn</p>
+                  </div>
+                </div>
+
+                {/* Active Status */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-semibold">Kích hoạt thẻ</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
                 <button
-                  onClick={() => setShowPermissionModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold"
+                >
+                  {editingCard ? 'Cập nhật' : 'Thêm mới'}
                 </button>
               </div>
-
-              {/* Current Permissions */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">Phân quyền hiện tại</h3>
-                {loadingPermissions ? (
-                  <div className="text-center py-4 text-gray-500">Đang tải...</div>
-                ) : cardPermissions.length === 0 ? (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
-                    Thẻ chưa được gán phân quyền nào
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {cardPermissions.map((cp: any) => (
-                      <div key={cp.id} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900">{cp.permission_name}</div>
-                          <div className="text-sm text-gray-600">{cp.permission_description}</div>
-                          <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                            <span>Ưu tiên: {cp.priority}</span>
-                            {cp.valid_from && (
-                              <span>Từ: {new Date(cp.valid_from).toLocaleDateString('vi-VN')}</span>
-                            )}
-                            {cp.valid_until && (
-                              <span>Đến: {new Date(cp.valid_until).toLocaleDateString('vi-VN')}</span>
-                            )}
-                          </div>
-                          {cp.additional_door_ids && cp.additional_door_ids.length > 0 && (
-                            <div className="mt-1 text-xs text-blue-600">
-                              + Thêm cửa: {cp.additional_door_ids.join(', ')}
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleRemovePermission(cp.id)}
-                          className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                          title="Xóa"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add New Permission */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Thêm phân quyền mới</h3>
-                <form onSubmit={handleAddPermission} className="space-y-4">
-                  {/* Select Permission */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Chọn phân quyền <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      value={newPermissionData.permission_id}
-                      onChange={(e) => setNewPermissionData({ ...newPermissionData, permission_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    >
-                      <option value="">-- Chọn phân quyền --</option>
-                      {allPermissions.map((perm: any) => (
-                        <option key={perm.id} value={perm.id}>
-                          {perm.name} (Priority: {perm.priority})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Additional Doors */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cửa bổ sung (ID, cách nhau bởi dấu phẩy)
-                    </label>
-                    <input
-                      type="text"
-                      value={newPermissionData.additional_door_ids}
-                      onChange={(e) => setNewPermissionData({ ...newPermissionData, additional_door_ids: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      placeholder="VD: 7,8,9"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Thêm quyền truy cập cho các cửa này (ngoài quyền gốc)</p>
-                  </div>
-
-                  {/* Valid From/Until */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Hiệu lực từ</label>
-                      <input
-                        type="datetime-local"
-                        value={newPermissionData.valid_from}
-                        onChange={(e) => setNewPermissionData({ ...newPermissionData, valid_from: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Hiệu lực đến</label>
-                      <input
-                        type="datetime-local"
-                        value={newPermissionData.valid_until}
-                        onChange={(e) => setNewPermissionData({ ...newPermissionData, valid_until: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={!newPermissionData.permission_id}
-                    className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Thêm phân quyền
-                  </button>
-                </form>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      
+      {/* Permission Management Modal */}
+      {showPermissionModal && selectedCard && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <h2 className="text-2xl font-bold">
+                Quản lý phân quyền - Thẻ {selectedCard.card_number}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Người dùng: {selectedCard.user_name}
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Quyền hiện tại</h3>
+                {cardPermissions.length > 0 ? (
+                  <div className="space-y-2">
+                    {cardPermissions.map((cp) => (
+                      <div key={cp.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{cp.permission_name}</div>
+                          <div className="text-sm text-gray-600">
+                            {cp.valid_from && `Từ: ${new Date(cp.valid_from).toLocaleDateString('vi-VN')}`}
+                            {cp.valid_until && ` - Đến: ${new Date(cp.valid_until).toLocaleDateString('vi-VN')}`}
+                          </div>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Xóa quyền này?')) {
+                              try {
+                                await permissionAPI.removeFromCard(cp.id)
+                                toast.success('Xóa quyền thành công')
+                                handleOpenPermissionModal(selectedCard)
+                              } catch (error) {
+                                toast.error('Không thể xóa quyền')
+                              }
+                            }
+                          }}
+                          className="text-red-600 hover:bg-red-50 p-2 rounded"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 text-center py-4">
+                    Chưa có quyền nào được gán
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Thêm quyền mới</h3>
+                <div className="text-sm text-gray-600 mb-4">
+                  Chọn quyền và nhấn "Thêm" để gán cho thẻ này
+                </div>
+                <div className="space-y-2">
+                  {allPermissions.map((perm) => (
+                    <div key={perm.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                      <div>
+                        <div className="font-medium">{perm.name}</div>
+                        <div className="text-sm text-gray-600">
+                          Mode: {perm.door_access_mode} | Priority: {perm.priority}
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await permissionAPI.assignToCard(selectedCard.id, {
+                              permission_id: perm.id,
+                            })
+                            toast.success('Thêm quyền thành công')
+                            handleOpenPermissionModal(selectedCard)
+                          } catch (error: any) {
+                            toast.error(error.response?.data?.message || 'Không thể thêm quyền')
+                          }
+                        }}
+                        className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+                      >
+                        Thêm
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t flex justify-end">
+              <button
+                onClick={handleClosePermissionModal}
+                className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
