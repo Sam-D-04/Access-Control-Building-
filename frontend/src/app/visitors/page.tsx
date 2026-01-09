@@ -209,7 +209,7 @@ export default function VisitorCameraPage() {
         const parts = []
         if (fullName) parts.push(`Họ tên: ${fullName}`)
         if (idCard) parts.push(`CCCD: ${idCard}`)
-        if (dob) parts.push(`Ngày sinh: ${dob}`)
+        if (dob) parts.push(`Ngày cấp: ${dob}`)
         if (reason) parts.push(`Lý do: ${reason}`)
         const finalNotes = parts.join(' - ')
 
