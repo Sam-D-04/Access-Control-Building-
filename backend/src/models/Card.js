@@ -1,10 +1,13 @@
+// backend/src/models/Card.js
 const { executeQuery, getOneRow } = require('../config/database');
 
-// Tìm thẻ theo ID (với thông tin user và department)
+// 1. Tìm thẻ theo ID
 async function findCardById(cardId) {
     const sql = `
         SELECT 
-            c.*,
+            c.id, c.card_uid, c.user_id, c.is_active, c.notes,
+            c.issued_at as issue_date,   -- Đổi tên khi lấy ra để khớp Frontend
+            c.expired_at as expiry_date, -- Đổi tên khi lấy ra để khớp Frontend
             u.full_name as user_name,
             u.email as user_email,
             d.name as department_name
@@ -17,32 +20,70 @@ async function findCardById(cardId) {
     return card;
 }
 
-// Lấy tất cả thẻ
-async function getAllCards() {
+// 2. Tìm thẻ theo UID (Dùng cho Scan)
+async function findCardByUid(cardUid) {
     const sql = `
         SELECT 
             c.*,
+            u.full_name,
+            u.email,
+            u.employee_id,
+            u.role,
+            u.is_active as user_is_active,
+            d.name as department_name
+        FROM cards c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        WHERE c.card_uid = ?
+    `;
+    return await getOneRow(sql, [cardUid]);
+}
+
+// 3. Lấy thẻ theo User
+async function getCardsByUser(userId) {
+    const sql = `
+        SELECT 
+            c.id, c.card_uid, c.user_id, c.is_active,
+            c.issued_at as issue_date,
+            c.expired_at as expiry_date,
             u.full_name as user_name,
             u.email as user_email,
             d.name as department_name
         FROM cards c
         LEFT JOIN users u ON c.user_id = u.id
         LEFT JOIN departments d ON u.department_id = d.id
-        WHERE c.is_active = TRUE
+        WHERE c.user_id = ? 
         ORDER BY c.created_at DESC
     `;
-    const cards = await executeQuery(sql, []);
-    return cards;
+    return await executeQuery(sql, [userId]);
 }
 
-// Tạo thẻ mới
+// 4. Lấy tất cả thẻ
+async function getAllCards() {
+    const sql = `
+        SELECT 
+            c.id, c.card_uid, c.user_id, c.is_active,
+            c.issued_at as issue_date,
+            c.expired_at as expiry_date,
+            u.full_name as user_name,
+            u.email as user_email,
+            d.name as department_name
+        FROM cards c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        ORDER BY c.created_at DESC
+    `;
+    return await executeQuery(sql, []);
+}
+
+// 5. Tạo thẻ mới (Mapping field chính xác)
 async function createCard(cardData) {
     const sql = `
         INSERT INTO cards (
             card_uid,
             user_id,
-            issue_date,
-            expiry_date,
+            issued_at,  -- DB dùng issued_at
+            expired_at, -- DB dùng expired_at
             is_active
         ) VALUES (?, ?, ?, ?, ?)
     `;
@@ -50,8 +91,10 @@ async function createCard(cardData) {
     const params = [
         cardData.card_uid,
         cardData.user_id,
-        cardData.issue_date || new Date().toISOString().split('T')[0],
-        cardData.expiry_date || null,
+        // Map từ issue_date (Frontend) sang issued_at (DB)
+        cardData.issue_date || new Date(), 
+        // Map từ expiry_date (Frontend) sang expired_at (DB)
+        cardData.expiry_date || null,      
         cardData.is_active !== undefined ? cardData.is_active : true
     ];
 
@@ -59,7 +102,7 @@ async function createCard(cardData) {
     return await findCardById(result.insertId);
 }
 
-// Cập nhật thẻ
+// 6. Cập nhật thẻ (QUAN TRỌNG: Sửa lỗi không lưu ngày hết hạn)
 async function updateCard(cardId, cardData) {
     const updateFields = [];
     const params = [];
@@ -74,15 +117,19 @@ async function updateCard(cardId, cardData) {
         params.push(cardData.user_id);
     }
 
+    // --- SỬA LỖI TẠI ĐÂY ---
+    // Frontend gửi 'issue_date', DB cần 'issued_at'
     if (cardData.issue_date !== undefined) {
-        updateFields.push('issue_date = ?');
+        updateFields.push('issued_at = ?');
         params.push(cardData.issue_date);
     }
 
+    // Frontend gửi 'expiry_date', DB cần 'expired_at'
     if (cardData.expiry_date !== undefined) {
-        updateFields.push('expiry_date = ?');
+        updateFields.push('expired_at = ?');
         params.push(cardData.expiry_date);
     }
+    // -----------------------
 
     if (cardData.is_active !== undefined) {
         updateFields.push('is_active = ?');
@@ -101,47 +148,25 @@ async function updateCard(cardId, cardData) {
     return await findCardById(cardId);
 }
 
-// Kích hoạt thẻ
+// Các hàm tiện ích giữ nguyên
 async function activateCard(cardId) {
-    const sql = 'UPDATE cards SET is_active = TRUE WHERE id = ?';
-    await executeQuery(sql, [cardId]);
+    await executeQuery('UPDATE cards SET is_active = TRUE WHERE id = ?', [cardId]);
     return await findCardById(cardId);
 }
 
-// Vô hiệu hóa thẻ
 async function deactivateCard(cardId) {
-    const sql = 'UPDATE cards SET is_active = FALSE WHERE id = ?';
-    await executeQuery(sql, [cardId]);
+    await executeQuery('UPDATE cards SET is_active = FALSE WHERE id = ?', [cardId]);
     return await findCardById(cardId);
 }
 
-// Xóa thẻ (soft delete)
 async function deleteCard(cardId) {
-    const sql = 'UPDATE cards SET is_active = FALSE WHERE id = ?';
-    const result = await executeQuery(sql, [cardId]);
+    const result = await executeQuery('DELETE FROM cards WHERE id = ?', [cardId]);
     return result.affectedRows > 0;
-}
-
-// Lấy thẻ theo user
-async function getCardsByUser(userId) {
-    const sql = `
-        SELECT 
-            c.*,
-            u.full_name as user_name,
-            u.email as user_email,
-            d.name as department_name
-        FROM cards c
-        LEFT JOIN users u ON c.user_id = u.id
-        LEFT JOIN departments d ON u.department_id = d.id
-        WHERE c.user_id = ? AND c.is_active = TRUE
-        ORDER BY c.created_at DESC
-    `;
-    const cards = await executeQuery(sql, [userId]);
-    return cards;
 }
 
 module.exports = {
     findCardById,
+    findCardByUid,
     getAllCards,
     getCardsByUser,
     createCard,
