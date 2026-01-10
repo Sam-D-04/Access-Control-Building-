@@ -102,7 +102,6 @@ async function createCard(cardData) {
     return await findCardById(result.insertId);
 }
 
-// 6. Cập nhật thẻ (QUAN TRỌNG: Sửa lỗi không lưu ngày hết hạn)
 async function updateCard(cardId, cardData) {
     const updateFields = [];
     const params = [];
@@ -122,7 +121,6 @@ async function updateCard(cardId, cardData) {
         params.push(cardData.issued_at);
     }
 
-    // Frontend gửi 'expired_at', DB cần 'expired_at'
     if (cardData.expired_at !== undefined) {
         updateFields.push('expired_at = ?');
         params.push(cardData.expired_at);
