@@ -6,8 +6,8 @@ async function findCardById(cardId) {
     const sql = `
         SELECT 
             c.id, c.card_uid, c.user_id, c.is_active, c.notes,
-            c.issued_at as issue_date,   -- Đổi tên khi lấy ra để khớp Frontend
-            c.expired_at as expiry_date, -- Đổi tên khi lấy ra để khớp Frontend
+            c.issued_at as issued_at,   
+            c.expired_at as expired_at, 
             u.full_name as user_name,
             u.email as user_email,
             d.name as department_name
@@ -44,8 +44,8 @@ async function getCardsByUser(userId) {
     const sql = `
         SELECT 
             c.id, c.card_uid, c.user_id, c.is_active,
-            c.issued_at as issue_date,
-            c.expired_at as expiry_date,
+            c.issued_at as issued_at,
+            c.expired_at as expired_at,
             u.full_name as user_name,
             u.email as user_email,
             d.name as department_name
@@ -63,8 +63,8 @@ async function getAllCards() {
     const sql = `
         SELECT 
             c.id, c.card_uid, c.user_id, c.is_active,
-            c.issued_at as issue_date,
-            c.expired_at as expiry_date,
+            c.issued_at as issued_at,
+            c.expired_at as expired_at,
             u.full_name as user_name,
             u.email as user_email,
             d.name as department_name
@@ -82,8 +82,8 @@ async function createCard(cardData) {
         INSERT INTO cards (
             card_uid,
             user_id,
-            issued_at,  -- DB dùng issued_at
-            expired_at, -- DB dùng expired_at
+            issued_at,  
+            expired_at, 
             is_active
         ) VALUES (?, ?, ?, ?, ?)
     `;
@@ -91,10 +91,10 @@ async function createCard(cardData) {
     const params = [
         cardData.card_uid,
         cardData.user_id,
-        // Map từ issue_date (Frontend) sang issued_at (DB)
-        cardData.issue_date || new Date(), 
-        // Map từ expiry_date (Frontend) sang expired_at (DB)
-        cardData.expiry_date || null,      
+        // Map từ issued_at (Frontend) sang issued_at (DB)
+        cardData.issued_at || new Date(), 
+        // Map từ expired_at (Frontend) sang expired_at (DB)
+        cardData.expired_at || null,      
         cardData.is_active !== undefined ? cardData.is_active : true
     ];
 
@@ -117,17 +117,15 @@ async function updateCard(cardId, cardData) {
         params.push(cardData.user_id);
     }
 
-    // --- SỬA LỖI TẠI ĐÂY ---
-    // Frontend gửi 'issue_date', DB cần 'issued_at'
-    if (cardData.issue_date !== undefined) {
+    if (cardData.issued_at !== undefined) {
         updateFields.push('issued_at = ?');
-        params.push(cardData.issue_date);
+        params.push(cardData.issued_at);
     }
 
-    // Frontend gửi 'expiry_date', DB cần 'expired_at'
-    if (cardData.expiry_date !== undefined) {
+    // Frontend gửi 'expired_at', DB cần 'expired_at'
+    if (cardData.expired_at !== undefined) {
         updateFields.push('expired_at = ?');
-        params.push(cardData.expiry_date);
+        params.push(cardData.expired_at);
     }
     // -----------------------
 
