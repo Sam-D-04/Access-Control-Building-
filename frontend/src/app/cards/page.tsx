@@ -12,8 +12,8 @@ interface Card {
   user_name?: string
   user_email?: string
   department_name?: string
-  issue_date: string
-  expiry_date: string | null
+  issued_at: string
+  expired_at: string | null
   is_active: boolean
 }
 
@@ -55,8 +55,8 @@ export default function CardsPage() {
   const [formData, setFormData] = useState({
     card_uid: '',
     user_id: '',
-    issue_date: new Date().toISOString().split('T')[0],
-    expiry_date: '',
+    issued_at: new Date().toISOString().split('T')[0],
+    expired_at: '',
     is_active: true,
   })
 
@@ -107,8 +107,8 @@ export default function CardsPage() {
     setFormData({
       card_uid: card.card_uid || '',
       user_id: card.user_id.toString(),
-      issue_date: card.issue_date ? card.issue_date.split('T')[0] : new Date().toISOString().split('T')[0],
-      expiry_date: card.expiry_date ? card.expiry_date.split('T')[0] : '',
+      issued_at: card.issued_at ? card.issued_at.split('T')[0] : new Date().toISOString().split('T')[0],
+      expired_at: card.expired_at ? card.expired_at.split('T')[0] : '',
       is_active: card.is_active,
     })
   } else {
@@ -116,8 +116,8 @@ export default function CardsPage() {
     setFormData({
       card_uid: '',
       user_id: '',
-      issue_date: new Date().toISOString().split('T')[0],
-      expiry_date: '',
+      issued_at: new Date().toISOString().split('T')[0],
+      expired_at: '',
       is_active: true,
     })
   }
@@ -136,7 +136,7 @@ export default function CardsPage() {
       const data = {
         ...formData,
         user_id: parseInt(formData.user_id),
-        expiry_date: formData.expiry_date || null,
+        expired_at: formData.expired_at || null,
       }
 
       if (editingCard) {
@@ -300,12 +300,12 @@ export default function CardsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
-                        {new Date(card.issue_date).toLocaleDateString('vi-VN')}
+                        {new Date(card.issued_at).toLocaleDateString('vi-VN')}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
-                        {card.expiry_date ? new Date(card.expiry_date).toLocaleDateString('vi-VN') : 'Không giới hạn'}
+                        {card.expired_at ? new Date(card.expired_at).toLocaleDateString('vi-VN') : 'Không giới hạn'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -437,8 +437,8 @@ export default function CardsPage() {
                     <input
                       type="date"
                       required
-                      value={formData.issue_date}
-                      onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
+                      value={formData.issued_at}
+                      onChange={(e) => setFormData({ ...formData, issued_at: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
                     />
                   </div>
@@ -448,8 +448,8 @@ export default function CardsPage() {
                     <label className="block text-sm font-semibold mb-2">Ngày hết hạn</label>
                     <input
                       type="date"
-                      value={formData.expiry_date}
-                      onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                      value={formData.expired_at}
+                      onChange={(e) => setFormData({ ...formData, expired_at: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">Để trống nếu không giới hạn</p>
