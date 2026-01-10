@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout'
 import { cardAPI, userAPI, permissionAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
+
 interface Card {
   id: number
   card_uid: string
@@ -12,8 +13,8 @@ interface Card {
   user_name?: string
   user_email?: string
   department_name?: string
-  issued_at: string
-  expired_at: string | null
+  issued_at: string        
+  expired_at: string | null 
   is_active: boolean
 }
 
@@ -51,11 +52,17 @@ export default function CardsPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  
+  // State trigger để reload lại danh sách
+  const [refreshKey, setRefreshKey] = useState(0)
+
   const [editingCard, setEditingCard] = useState<Card | null>(null)
+  
+  // 2. Cập nhật FormData state
   const [formData, setFormData] = useState({
     card_uid: '',
     user_id: '',
-    issued_at: new Date().toISOString().split('T')[0],
+    issued_at: new Date().toISOString().split('T')[0], // Mặc định hôm nay
     expired_at: '',
     is_active: true,
   })
@@ -74,10 +81,14 @@ export default function CardsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
+  // 3. Tách useEffect để tối ưu
   useEffect(() => {
-    fetchCards()
     fetchUsers()
   }, [])
+
+  useEffect(() => {
+    fetchCards()
+  }, [refreshKey]) // Chạy lại khi refreshKey thay đổi
 
   const fetchCards = async () => {
     try {
@@ -102,28 +113,28 @@ export default function CardsPage() {
   }
 
   const handleOpenModal = (card?: Card) => {
-  if (card) {
-    setEditingCard(card)
-    setFormData({
-      card_uid: card.card_uid || '',
-      user_id: card.user_id.toString(),
-      issued_at: card.issued_at ? card.issued_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      expired_at: card.expired_at ? card.expired_at.split('T')[0] : '',
-      is_active: card.is_active,
-    })
-  } else {
-    setEditingCard(null)
-    setFormData({
-      card_uid: '',
-      user_id: '',
-      issued_at: new Date().toISOString().split('T')[0],
-      expired_at: '',
-      is_active: true,
-    })
+    if (card) {
+      setEditingCard(card)
+      // 4. Map dữ liệu vào Form (cắt chuỗi ISO lấy YYYY-MM-DD)
+      setFormData({
+        card_uid: card.card_uid || '',
+        user_id: card.user_id.toString(),
+        issued_at: card.issued_at ? new Date(card.issued_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        expired_at: card.expired_at ? new Date(card.expired_at).toISOString().split('T')[0] : '',
+        is_active: card.is_active,
+      })
+    } else {
+      setEditingCard(null)
+      setFormData({
+        card_uid: '',
+        user_id: '',
+        issued_at: new Date().toISOString().split('T')[0],
+        expired_at: '',
+        is_active: true,
+      })
+    }
+    setShowModal(true)
   }
-  setShowModal(true)
-}
-
 
   const handleCloseModal = () => {
     setShowModal(false)
@@ -133,10 +144,11 @@ export default function CardsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // 5. Chuẩn bị dữ liệu gửi đi 
       const data = {
         ...formData,
         user_id: parseInt(formData.user_id),
-        expired_at: formData.expired_at || null,
+        expired_at: formData.expired_at || null, // Xử lý null nếu rỗng
       }
 
       if (editingCard) {
@@ -147,7 +159,7 @@ export default function CardsPage() {
         toast.success('Tạo thẻ mới thành công')
       }
 
-      fetchCards()
+      setRefreshKey(prev => prev + 1) // Trigger reload
       handleCloseModal()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
@@ -160,7 +172,7 @@ export default function CardsPage() {
     try {
       await cardAPI.delete(card.id)
       toast.success('Xóa thẻ thành công')
-      fetchCards()
+      setRefreshKey(prev => prev + 1) // Trigger reload
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa thẻ')
     }
@@ -298,11 +310,13 @@ export default function CardsPage() {
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-700">{card.department_name || '-'}</span>
                     </td>
+                    {/* Cột Ngày cấp */}
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
                         {new Date(card.issued_at).toLocaleDateString('vi-VN')}
                       </span>
                     </td>
+                    {/* Cột Ngày hết hạn */}
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
                         {card.expired_at ? new Date(card.expired_at).toLocaleDateString('vi-VN') : 'Không giới hạn'}
@@ -437,7 +451,7 @@ export default function CardsPage() {
                     <input
                       type="date"
                       required
-                      value={formData.issued_at}
+                      value={formData.issued_at} // Sử dụng issued_at
                       onChange={(e) => setFormData({ ...formData, issued_at: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
                     />
@@ -448,7 +462,7 @@ export default function CardsPage() {
                     <label className="block text-sm font-semibold mb-2">Ngày hết hạn</label>
                     <input
                       type="date"
-                      value={formData.expired_at}
+                      value={formData.expired_at} // Sử dụng expired_at
                       onChange={(e) => setFormData({ ...formData, expired_at: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-cyan-500"
                     />
