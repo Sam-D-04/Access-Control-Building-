@@ -12,7 +12,7 @@ const {
     getCardsByPermission
 } = require('../models/Permission');
 
-
+const { getOneRow, executeQuery } = require('../config/database'); // ← Thêm dòng này
 
 // GET /api/permissions - Lấy danh sách tất cả permission templates
 async function getAllPermissionsHandler(req, res, next) {
@@ -21,11 +21,9 @@ async function getAllPermissionsHandler(req, res, next) {
 
         console.log('Đang lấy danh sách permissions...');
 
-
         const permissions = await getAllPermissions(active_only === 'true');
 
         console.log('Dữ liệu lấy được là: ', permissions);
-
 
         return res.json({
             success: true,
@@ -195,24 +193,29 @@ async function updatePermissionHandler(req, res, next) {
     }
 }
 
-// DELETE /api/permissions/:id
+// DELETE /api/permissions/:id - Xóa permission template
 async function deletePermissionHandler(req, res, next) {
     try {
         const permissionId = req.params.id;
         const { hard_delete } = req.query;
 
-        // 1. Kiểm tra tồn tại (Sẽ lỗi nếu Model thiếu getOneRow)
+        // Kiểm tra permission có tồn tại không
         const permission = await findPermissionById(permissionId);
         if (!permission) {
-            return res.status(404).json({ success: false, message: 'Không tìm thấy permission' });
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy permission'
+            });
         }
 
-        // 2. Thực hiện xóa
-        // Lưu ý: Nếu hard_delete=true mà permission đang được dùng, hàm này sẽ throw lỗi SQL
+        // Thực hiện xóa
         const deleted = await deletePermission(permissionId, hard_delete === 'true');
 
         if (!deleted) {
-            return res.status(500).json({ success: false, message: 'Không thể xóa (Lỗi DB)' });
+            return res.status(500).json({
+                success: false,
+                message: 'Không thể xóa permission'
+            });
         }
 
         return res.json({
@@ -222,62 +225,18 @@ async function deletePermissionHandler(req, res, next) {
 
     } catch (error) {
         console.error('Error in deletePermissionHandler:', error);
-        
-        // 3. Bắt lỗi Foreign Key (khi xóa cứng permission đang dùng)
+
+        // Bắt lỗi Foreign Key (khi xóa cứng permission đang dùng)
         if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.code === 'ER_ROW_IS_REFERENCED') {
-            return res.status(409).json({ // 409 Conflict
-                success: false, 
-                message: 'Không thể xóa vĩnh viễn: Permission này đang được gán cho thẻ. Hãy gỡ bỏ khỏi các thẻ trước hoặc dùng xóa mềm (Soft Delete).' 
+            return res.status(409).json({
+                success: false,
+                message: 'Không thể xóa vĩnh viễn: Permission này đang được gán cho thẻ. Hãy gỡ bỏ khỏi các thẻ trước hoặc dùng xóa mềm (Soft Delete).'
             });
         }
-        
+
         next(error);
     }
 }
-// DELETE /api/card-permissions/:id - Xóa một permission assignment (HARD DELETE)
-async function removePermissionFromCardHandler(req, res, next) {
-    try {
-        const cardPermissionId = req.params.id;
-
-        // Kiểm tra card permission có tồn tại không
-        const cardPermission = await getOneRow(
-            'SELECT * FROM card_permissions WHERE id = ?',
-            [cardPermissionId]
-        );
-
-        if (!cardPermission) {
-            return res.status(404).json({
-                success: false,
-                message: 'Không tìm thấy card permission'
-            });
-        }
-
-        // Hard delete
-        const result = await executeQuery(
-            'DELETE FROM card_permissions WHERE id = ?',
-            [cardPermissionId]
-        );
-
-        if (result.affectedRows === 0) {
-            return res.status(500).json({
-                success: false,
-                message: 'Xóa quyền thất bại'
-            });
-        }
-
-        console.log('Card permission removed:', cardPermissionId, 'by', req.user.full_name);
-
-        return res.json({
-            success: true,
-            message: 'Đã xóa quyền thành công'
-        });
-
-    } catch (error) {
-        console.error('Error in removePermissionFromCardHandler:', error);
-        next(error);
-    }
-}
-
 
 // ===============================================
 // CARD PERMISSION ASSIGNMENT
@@ -397,7 +356,7 @@ async function updateCardPermissionHandler(req, res, next) {
     }
 }
 
-// DELETE /api/card-permissions/:id - Xóa quyền đã gán cho card
+// DELETE /api/card-permissions/:id - Xóa một permission assignment (HARD DELETE)
 async function removeCardPermissionHandler(req, res, next) {
     try {
         const cardPermissionId = req.params.id;
@@ -415,7 +374,8 @@ async function removeCardPermissionHandler(req, res, next) {
             });
         }
 
-        const deleted = await Permission.removePermissionFromCard(cardPermissionId);
+        // Gọi function từ model để xóa
+        const deleted = await removePermissionFromCard(cardPermissionId);
 
         if (!deleted) {
             return res.status(500).json({
@@ -424,7 +384,7 @@ async function removeCardPermissionHandler(req, res, next) {
             });
         }
 
-        console.log('Card permission removed:', cardPermissionId);
+        console.log('Card permission removed:', cardPermissionId, 'by', req.user.full_name);
 
         return res.json({
             success: true,
@@ -451,18 +411,15 @@ async function removeAllCardPermissionsHandler(req, res, next) {
             });
         }
 
-        // Hard delete tất cả
-        const result = await executeQuery(
-            'DELETE FROM card_permissions WHERE card_id = ?',
-            [cardId]
-        );
+        // Gọi function từ model để xóa tất cả
+        const count = await removeAllCardPermissions(cardId);
 
-        console.log('All card permissions removed for card:', cardId, 'Count:', result.affectedRows, 'by', req.user.full_name);
+        console.log('All card permissions removed for card:', cardId, 'Count:', count, 'by', req.user.full_name);
 
         return res.json({
             success: true,
-            message: `Đã xóa ${result.affectedRows} quyền thành công`,
-            count: result.affectedRows
+            message: `Đã xóa ${count} quyền thành công`,
+            count: count
         });
 
     } catch (error) {
@@ -470,7 +427,6 @@ async function removeAllCardPermissionsHandler(req, res, next) {
         next(error);
     }
 }
-
 
 // GET /api/permissions/:id/cards - Lấy danh sách cards có permission này
 async function getCardsByPermissionHandler(req, res, next) {
@@ -500,9 +456,8 @@ async function getCardsByPermissionHandler(req, res, next) {
     }
 }
 
-
 module.exports = {
-    // Permission templates
+    // Permission templates CRUD
     getAllPermissionsHandler,
     getPermissionByIdHandler,
     createPermissionHandler,
@@ -513,8 +468,9 @@ module.exports = {
     getCardPermissionsHandler,
     assignPermissionToCardHandler,
     updateCardPermissionHandler,
-    getCardsByPermissionHandler,
-    removePermissionFromCardHandler,
-    removeAllCardPermissionsHandler,
-    removeCardPermissionHandler    
+    removeCardPermissionHandler,        
+    removeAllCardPermissionsHandler,    
+
+    // Query
+    getCardsByPermissionHandler
 };
