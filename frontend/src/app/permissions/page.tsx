@@ -52,6 +52,8 @@ export default function PermissionsPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null)
   const [currentStep, setCurrentStep] = useState(1) // 1: Permission Info, 2: Assign Cards
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   // Form data
   const [formData, setFormData] = useState({
@@ -214,13 +216,24 @@ export default function PermissionsPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa phân quyền này?')) return
+  const handleOpenDeleteDialog = (id: number) => {
+    setDeletingId(id)
+    setShowDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false)
+    setDeletingId(null)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingId) return
 
     try {
-      await permissionAPI.delete(id)
+      await permissionAPI.delete(deletingId)
       toast.success('Xóa phân quyền thành công')
       fetchData()
+      handleCloseDeleteDialog()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa phân quyền')
     }
@@ -360,7 +373,7 @@ export default function PermissionsPage() {
                       Trạng thái
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                      Thao tác
+                      Hành động
                     </th>
                   </tr>
                 </thead>
@@ -414,14 +427,20 @@ export default function PermissionsPage() {
                         <button
                           onClick={() => handleOpenModal(permission)}
                           className="text-cyan-600 hover:text-cyan-900 mr-3"
+                          title="Chỉnh sửa"
                         >
-                          Sửa
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(permission.id)}
+                          onClick={() => handleOpenDeleteDialog(permission.id)}
                           className="text-red-600 hover:text-red-900"
+                          title="Xóa"
                         >
-                          Xóa
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
                         </button>
                       </td>
                     </tr>
@@ -721,6 +740,42 @@ export default function PermissionsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Bạn có chắc chắn muốn xóa phân quyền này? Hành động này không thể hoàn tác.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={handleCloseDeleteDialog}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              >
+                Xóa
+              </button>
             </div>
           </div>
         </div>
