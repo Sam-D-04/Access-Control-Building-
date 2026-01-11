@@ -187,7 +187,10 @@ export default function PermissionsPage() {
         const response = await permissionAPI.create(data)
         permissionId = response.data.data.id
         toast.success('Tạo phân quyền thành công')
-        
+
+        // Load lại danh sách ngay sau khi tạo
+        fetchData()
+
         // Chuyển sang bước 2: Gán cards
         setEditingPermission(response.data.data)
         setCurrentStep(2)
@@ -726,7 +729,7 @@ export default function PermissionsPage() {
                     <div className="mb-3">
                       <input
                         type="text"
-                        placeholder="Tìm kiếm theo mã thẻ, tên hoặc email..."
+                        placeholder="Tìm kiếm theo mã thẻ, tên"
                         value={cardSearchTerm}
                         onChange={(e) => setCardSearchTerm(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
