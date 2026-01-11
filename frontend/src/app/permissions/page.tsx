@@ -633,7 +633,16 @@ export default function PermissionsPage() {
                   <div className="flex gap-3 pt-4">
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition"
+                      
+                      className="
+                      flex items-center justify-center gap-2
+                      px-6 py-2 
+                      bg-gradient-to-r from-cyan-600 to-red-600 
+                      text-white font-semibold rounded-lg 
+                      hover:from-cyan-700 hover:to-red-700 transition 
+                      whitespace-nowrap                      
+                      flex-shrink-0
+                      "
                     >
                       {editingPermission ? 'Cập nhật' : 'Tiếp theo'}
                     </button>
@@ -656,7 +665,7 @@ export default function PermissionsPage() {
                       Phân quyền "<strong>{editingPermission?.name}</strong>" đã được tạo thành công
                     </p>
                     <p className="text-sm text-green-700 mt-1">
-                      Bạn có thể gán phân quyền này cho các thẻ bên dưới (hoặc bỏ qua và hoàn thành)
+                      Có thể gán phân quyền này cho các thẻ bên dưới (hoặc bỏ qua và hoàn thành)
                     </p>
                   </div>
 
