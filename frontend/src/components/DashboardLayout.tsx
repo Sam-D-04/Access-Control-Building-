@@ -87,7 +87,7 @@ export default function DashboardLayout({
                 <div className="text-xs md:text-sm text-gray-600 hidden sm:block">Hôm nay</div>
                 <div className="text-xs md:text-sm font-semibold">
                   {new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                  <span className="hidden sm:inline">/{new Date().getFullYear()}</span>
+                  <span className="hidden sm:inline">-{new Date().getFullYear()}</span>
                   {' - '}
                   {new Date().toLocaleTimeString('vi-VN', {
                     hour: '2-digit',

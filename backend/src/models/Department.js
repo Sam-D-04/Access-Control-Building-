@@ -269,11 +269,16 @@ async function getAllDepartmentsWithCount() {
             d.description,
             d.created_at,
             p.name as parent_name,
-            COUNT(u.id) as employee_count
+            COUNT(DISTINCT u.id) as employee_count,
+            COUNT(DISTINCT dd.door_id) as door_count,
+            m.id as manager_id,
+            m.full_name as manager_name
         FROM departments d
         LEFT JOIN departments p ON d.parent_id = p.id
         LEFT JOIN users u ON d.id = u.department_id
-        GROUP BY d.id
+        LEFT JOIN users m ON d.id = m.department_id AND m.position = 'Manager'
+        LEFT JOIN door_departments dd ON d.id = dd.department_id
+        GROUP BY d.id, m.id, m.full_name
         ORDER BY d.level ASC, d.parent_id ASC, d.name ASC
     `;
 
