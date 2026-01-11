@@ -1,8 +1,5 @@
 const { getCardPermissions } = require('../models/Permission');
 
-/**
- * Kiểm tra quyền truy cập dựa trên PERMISSION SYSTEM
- */
 async function checkAccessPermission(card, door, user) {
     // 1. Kiểm tra cơ bản
     if (!card.is_active) {

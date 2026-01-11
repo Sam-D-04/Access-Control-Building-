@@ -7,6 +7,7 @@ const path = require('path');
 const { testDatabaseConnection } = require('./config/database');
 const { initMqttClient } = require('./config/mqtt');
 const { handleError, handleNotFound } = require('./middlewares/errorHandler');
+const { initCronJobs } = require('./services/cronService'); 
 
 // Tạo ứng dụng Express
 const app = express();
@@ -105,9 +106,8 @@ async function startServer() {
             console.log('================================================');
             console.log('   HỆ THỐNG KIỂM SOÁT RA VÀO - BACKEND API');
             console.log('================================================');
-            console.log('   Health check: ');
-            console.log('================================================');
             console.log('');
+            initCronJobs(); 
         });
     } catch (error) {
         console.error('Lỗi khi khởi động server: ', error.message);
