@@ -315,7 +315,7 @@ export default function PermissionsPage() {
 
             <button
               onClick={() => handleOpenModal()}
-              className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition flex items-center gap-2"
+              className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -474,7 +474,7 @@ export default function PermissionsPage() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      placeholder="VD: Office Hours Access"
+                  
                     />
                   </div>
 
@@ -486,7 +486,6 @@ export default function PermissionsPage() {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       rows={2}
-                      placeholder="Mô tả chi tiết"
                     />
                   </div>
 
@@ -636,7 +635,7 @@ export default function PermissionsPage() {
                       type="submit"
                       className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white rounded-lg hover:from-cyan-700 hover:to-cyan-800 transition"
                     >
-                      {editingPermission ? 'Cập nhật' : 'Tiếp theo →'}
+                      {editingPermission ? 'Cập nhật' : 'Tiếp theo'}
                     </button>
                     <button
                       type="button"
@@ -703,7 +702,7 @@ export default function PermissionsPage() {
                       onClick={handleCloseModal}
                       className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
                     >
-                      Bỏ qua & Hoàn thành
+                      Bỏ qua và hoàn thành
                     </button>
                   </div>
                 </div>

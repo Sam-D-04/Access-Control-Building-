@@ -37,13 +37,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null })
     try {
-
       const response = await authAPI.login(email, password)
-      
       const { token, user } = response.data
 
-      // Save to localStorage
+      // Lưu token vào localStorage
       localStorage.setItem('token', token)
+      // Lưu user tạm thời (optional, vì checkAuth sẽ load lại)
       localStorage.setItem('user', JSON.stringify(user))
 
       set({
@@ -77,17 +76,20 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   checkAuth: async () => {
     const token = localStorage.getItem('token')
-    const userStr = localStorage.getItem('user')
 
-    if (!token || !userStr) {
-      set({ isAuthenticated: false })
+    // Nếu không có token, reset state và thoát
+    if (!token) {
+      set({ isAuthenticated: false, user: null, token: null })
       return
     }
 
     try {
-      const user = JSON.parse(userStr)
-      // Verify token with backend
-      await authAPI.getMe()
+      // Gọi API lấy thông tin user mới nhất từ server
+      const response = await authAPI.getMe()
+      const user = response.data.user
+
+      // Cập nhật lại user vào localStorage để đồng bộ
+      localStorage.setItem('user', JSON.stringify(user))
 
       set({
         token,
@@ -95,7 +97,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: true,
       })
     } catch (error) {
-      // Token invalid, clear storage
+      console.error('Phiên đăng nhập hết hạn hoặc lỗi:', error)
+      // Nếu token không hợp lệ, xóa sạch để đăng nhập lại
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       set({

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
+import AuthProvider from '@/components/AuthProvider'
 
 export const metadata: Metadata = {
   title: 'Access Control System',
@@ -32,31 +33,35 @@ export default function RootLayout({
         <link rel="apple-touch-icon" />
       </head>
       <body>
-        {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
+
+        <AuthProvider>
+          {children}
+        
+          <Toaster
+            position="top-right"
+            toastOptions={{
               duration: 3000,
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
+              style: {
+                background: '#363636',
+                color: '#fff',
               },
-            },
-            error: {
-              duration: 4000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
               },
-            },
-          }}
-        />
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </AuthProvider>
       </body>
     </html>
   )
