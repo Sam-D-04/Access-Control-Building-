@@ -315,12 +315,17 @@ export default function PermissionsPage() {
 
             <button
               onClick={() => handleOpenModal()}
-              className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-red-600 text-white rounded-lg hover:from-cyan-700 hover:to-red-700 transition font-semibold"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Thêm phân quyền
+              className="
+                      flex items-center justify-center gap-2
+                      px-6 py-2 
+                      bg-gradient-to-r from-cyan-600 to-red-600 
+                      text-white font-semibold rounded-lg 
+                      hover:from-cyan-700 hover:to-red-700 transition 
+                      whitespace-nowrap                      
+                      flex-shrink-0
+                      "
+              >
+             + Thêm phân quyền
             </button>
           </div>
         </div>
