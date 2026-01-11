@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog'
 import { permissionAPI, cardAPI, doorAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
@@ -75,6 +76,7 @@ export default function PermissionsPage() {
   // Filter
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [cardSearchTerm, setCardSearchTerm] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -140,6 +142,7 @@ export default function PermissionsPage() {
     setEditingPermission(null)
     setCurrentStep(1)
     setSelectedCardIds([])
+    setCardSearchTerm('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -279,10 +282,21 @@ export default function PermissionsPage() {
   const filteredPermissions = permissions.filter((perm) => {
     const matchSearch = perm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       perm.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchStatus = filterStatus === '' || 
+    const matchStatus = filterStatus === '' ||
       (filterStatus === 'active' && perm.is_active) ||
       (filterStatus === 'inactive' && !perm.is_active)
     return matchSearch && matchStatus
+  })
+
+  // Filter cards for assign step
+  const filteredCards = cards.filter((card) => {
+    if (!cardSearchTerm) return true
+    const search = cardSearchTerm.toLowerCase()
+    return (
+      card.card_uid.toLowerCase().includes(search) ||
+      card.user_name?.toLowerCase().includes(search)
+    
+    )
   })
 
   const getDoorModeLabel = (mode: string) => {
@@ -707,8 +721,25 @@ export default function PermissionsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Chọn thẻ cần gán (đã chọn: {selectedCardIds.length})
                     </label>
+
+                    {/* Search input */}
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm theo mã thẻ, tên hoặc email..."
+                        value={cardSearchTerm}
+                        onChange={(e) => setCardSearchTerm(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto p-3 border border-gray-300 rounded-lg">
-                      {cards.map(card => (
+                      {filteredCards.length === 0 ? (
+                        <div className="col-span-2 text-center py-8 text-gray-500">
+                          Không tìm thấy thẻ nào
+                        </div>
+                      ) : (
+                        filteredCards.map(card => (
                         <label
                           key={card.id}
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
@@ -725,10 +756,11 @@ export default function PermissionsPage() {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900 font-mono">{card.card_uid}</div>
-                            <div className="text-xs text-gray-500">{card.user_name || 'Chưa gán nhân viên'}</div>
+                            <div className="text-xs text-gray-500">{card.user_name || 'Chưa gán nhân viên'}</div>                         
                           </div>
                         </label>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
 
@@ -755,41 +787,13 @@ export default function PermissionsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Bạn có chắc chắn muốn xóa phân quyền này? Hành động này không thể hoàn tác.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end mt-6">
-              <button
-                onClick={handleCloseDeleteDialog}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-              >
-                Xóa
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleDelete}
+        message="Bạn có chắc chắn muốn xóa phân quyền này?"
+        additionalNote="Hành động này không thể hoàn tác."
+      />
     </DashboardLayout>
   )
 }

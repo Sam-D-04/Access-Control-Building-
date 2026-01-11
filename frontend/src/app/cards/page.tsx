@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog'
 import { cardAPI, userAPI, permissionAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
@@ -80,6 +81,10 @@ export default function CardsPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+
+  // Delete dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingCard, setDeletingCard] = useState<Card | null>(null)
 
   // 3. Tách useEffect để tối ưu
   useEffect(() => {
@@ -166,13 +171,24 @@ export default function CardsPage() {
     }
   }
 
-  const handleDelete = async (card: Card) => {
-    if (!confirm(`Xóa thẻ ${card.card_uid}?`)) return
+  const handleOpenDeleteDialog = (card: Card) => {
+    setDeletingCard(card)
+    setShowDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false)
+    setDeletingCard(null)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingCard) return
 
     try {
-      await cardAPI.delete(card.id)
+      await cardAPI.delete(deletingCard.id)
       toast.success('Xóa thẻ thành công')
-      setRefreshKey(prev => prev + 1) // Trigger reload
+      setRefreshKey(prev => prev + 1)
+      handleCloseDeleteDialog()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa thẻ')
     }
@@ -350,7 +366,7 @@ export default function CardsPage() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(card)}
+                          onClick={() => handleOpenDeleteDialog(card)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                           title="Xóa"
                         >
@@ -604,6 +620,15 @@ export default function CardsPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleDelete}
+        message="Bạn có chắc chắn muốn xóa thẻ"
+        itemName={deletingCard?.card_uid}
+        additionalNote="Hành động này không thể hoàn tác."
+      />
     </DashboardLayout>
   )
 }

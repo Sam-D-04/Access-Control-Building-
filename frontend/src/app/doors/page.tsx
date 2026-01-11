@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog'
 import { doorAPI, departmentAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
@@ -43,6 +44,10 @@ export default function DoorsPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+
+  // Delete dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingDoor, setDeletingDoor] = useState<Door | null>(null)
 
   useEffect(() => {
     fetchDoors()
@@ -137,13 +142,24 @@ export default function DoorsPage() {
     }
   }
 
-  const handleDelete = async (door: Door) => {
-    if (!confirm(`Xóa cửa ${door.name}?`)) return
+  const handleOpenDeleteDialog = (door: Door) => {
+    setDeletingDoor(door)
+    setShowDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false)
+    setDeletingDoor(null)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingDoor) return
 
     try {
-      await doorAPI.delete(door.id)
+      await doorAPI.delete(deletingDoor.id)
       toast.success('Xóa cửa thành công')
       fetchDoors()
+      handleCloseDeleteDialog()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa cửa')
     }
@@ -311,7 +327,7 @@ export default function DoorsPage() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(door)}
+                          onClick={() => handleOpenDeleteDialog(door)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                           title="Xóa"
                         >
@@ -477,6 +493,15 @@ export default function DoorsPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleDelete}
+        message="Bạn có chắc chắn muốn xóa cửa"
+        itemName={deletingDoor?.name}
+        additionalNote="Hành động này không thể hoàn tác."
+      />
     </DashboardLayout>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog'
 import { departmentAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 
@@ -29,6 +30,10 @@ export default function DepartmentsPage() {
     parent_id: '',
     description: '',
   })
+
+  // Delete dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingDept, setDeletingDept] = useState<Department | null>(null)
 
   useEffect(() => {
     fetchDepartments()
@@ -136,13 +141,24 @@ export default function DepartmentsPage() {
     }
   }
 
-  const handleDelete = async (dept: Department) => {
-    if (!confirm(`Xóa phòng ban "${dept.name}"?\n\nLưu ý: Không thể xóa nếu còn nhân viên hoặc phòng ban con.`)) return
+  const handleOpenDeleteDialog = (dept: Department) => {
+    setDeletingDept(dept)
+    setShowDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false)
+    setDeletingDept(null)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingDept) return
 
     try {
-      await departmentAPI.delete(dept.id)
+      await departmentAPI.delete(deletingDept.id)
       toast.success('Xóa phòng ban thành công')
       fetchDepartments()
+      handleCloseDeleteDialog()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa phòng ban')
     }
@@ -251,7 +267,7 @@ export default function DepartmentsPage() {
               </svg>
             </button>
             <button
-              onClick={() => handleDelete(dept)}
+              onClick={() => handleOpenDeleteDialog(dept)}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
               title="Xóa"
             >
@@ -389,6 +405,15 @@ export default function DepartmentsPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleDelete}
+        message="Bạn có chắc chắn muốn xóa phòng ban"
+        itemName={deletingDept?.name}
+        additionalNote="Lưu ý: Không thể xóa nếu còn nhân viên hoặc phòng ban con."
+      />
     </DashboardLayout>
   )
 }

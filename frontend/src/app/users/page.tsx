@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog'
 import { userAPI, departmentAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { Target } from 'lucide-react'
@@ -56,6 +57,10 @@ export default function UsersPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+
+  // Delete dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingUser, setDeletingUser] = useState<User | null>(null)
 
   useEffect(() => {
     fetchUsers()
@@ -206,13 +211,24 @@ export default function UsersPage() {
     }
   }
 
-  const handleDelete = async (user: User) => {
-    if (!confirm(`Xóa user ${user.full_name}?`)) return
+  const handleOpenDeleteDialog = (user: User) => {
+    setDeletingUser(user)
+    setShowDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false)
+    setDeletingUser(null)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingUser) return
 
     try {
-      await userAPI.delete(user.id)
+      await userAPI.delete(deletingUser.id)
       fetchUsers()
       toast.success('Đã xóa user thành công')
+      handleCloseDeleteDialog()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể xóa user')
     }
@@ -415,7 +431,7 @@ export default function UsersPage() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(user)}
+                          onClick={() => handleOpenDeleteDialog(user)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                           title="Xóa"
                         >
@@ -645,6 +661,15 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleDelete}
+        message="Bạn có chắc chắn muốn xóa nhân viên"
+        itemName={deletingUser?.full_name}
+        additionalNote="Hành động này không thể hoàn tác."
+      />
     </DashboardLayout>
   )
 }
