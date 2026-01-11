@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/DashboardLayout'
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog'
 import { useAuthStore } from '@/store/authStore'
 import axios from 'axios'
 
@@ -56,6 +57,10 @@ export default function VisitorCameraPage() {
   // Photo list states
   const [photos, setPhotos] = useState<VisitorPhoto[]>([])
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false)
+
+  // Delete dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingPhoto, setDeletingPhoto] = useState<VisitorPhoto | null>(null)
 
   // Check auth
   useEffect(() => {
@@ -282,13 +287,23 @@ export default function VisitorCameraPage() {
     }
   }, [isAuthenticated, filterStartDate, filterEndDate, filterStartTime, filterEndTime])
 
-  const deletePhoto = async (id: number) => {
-    if (!confirm('Bạn có chắc muốn xóa ảnh này')) return
+  const handleOpenDeleteDialog = (photo: VisitorPhoto) => {
+    setDeletingPhoto(photo)
+    setShowDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setShowDeleteDialog(false)
+    setDeletingPhoto(null)
+  }
+
+  const deletePhoto = async () => {
+    if (!deletingPhoto) return
 
     try {
       const token = localStorage.getItem('token')
       await axios.delete(
-        `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/visitors/photos/${deletingPhoto.id}`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -297,6 +312,7 @@ export default function VisitorCameraPage() {
       alert('Đã xóa ảnh')
       loadPhotos()
       loadStats()
+      handleCloseDeleteDialog()
     } catch (error: any) {
       alert(error.response?.data?.message || 'Lỗi khi xóa ảnh')
     }
@@ -525,8 +541,18 @@ export default function VisitorCameraPage() {
                       </div>
                       <div className="pt-2 mt-2 border-t border-gray-100 flex justify-between items-end">
                           <div className="text-xs text-gray-400 font-medium">Vào: {new Date(photo.captured_at).toLocaleString('vi-VN')}</div>
-                          <div className="flex gap-2">
-                              {user.role === 'admin' && <button onClick={() => deletePhoto(photo.id)} className="text-gray-400 hover:text-red-600 text-xs font-semibold px-2">Xóa</button>}
+                          <div className="flex gap-2 items-center">
+                              {user.role === 'admin' && (
+                                <button
+                                  onClick={() => handleOpenDeleteDialog(photo)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  title="Xóa"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
                               {!isCheckedOut ? (
                                   <button onClick={() => handleStartCheckout(photo)} disabled={!!checkoutId} className={`text-xs font-bold px-3 py-1.5 rounded transition shadow-sm ${checkoutId === photo.id ? 'bg-orange-200 text-orange-800 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                                       {checkoutId === photo.id ? 'Đang chụp...' : 'Check Out'}
@@ -544,6 +570,15 @@ export default function VisitorCameraPage() {
           </div>
         </div>
       </div>
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={deletePhoto}
+        message="Bạn có chắc chắn muốn xóa ảnh khách này?"
+        itemName={deletingPhoto ? `ID #${deletingPhoto.id}` : undefined}
+        additionalNote="Hành động này không thể hoàn tác."
+      />
     </DashboardLayout>
   )
 }
