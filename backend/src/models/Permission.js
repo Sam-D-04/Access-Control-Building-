@@ -3,12 +3,17 @@ const { executeQuery, getOneRow } = require('../config/database');
 // Lấy tất cả permissions
 async function getAllPermissions() {
     const sql = `
-        SELECT * FROM permissions 
-        WHERE is_active = 1
-        ORDER BY priority DESC
+        SELECT
+            p.*,
+            COUNT(DISTINCT pd.door_id) as door_count
+        FROM permissions p
+        LEFT JOIN permission_doors pd ON p.id = pd.permission_id
+        WHERE p.is_active = 1
+        GROUP BY p.id
+        ORDER BY p.priority DESC
     `;
     const permissions = await executeQuery(sql, []);
-    
+
     // Parse JSON cho mỗi permission (chỉ khi là string)
     return permissions.map(p => {
         if (p.time_restrictions && typeof p.time_restrictions === 'string') {

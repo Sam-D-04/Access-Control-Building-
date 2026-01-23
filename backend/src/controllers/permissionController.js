@@ -13,19 +13,15 @@ const {
 async function getAllPermissionsHandler(req, res, next) {
     try {
         const permissions = await getAllPermissions();
-        
-        // Lấy số lượng doors cho mỗi permission
-        for (let permission of permissions) {
-            const doors = await getAllowedDoors(permission.id);
-            permission.door_count = doors.length;
-        }
-        
+
+        // door_count đã được tính trong query (JOIN + COUNT), không cần loop nữa
+
         return res.json({
             success: true,
             data: permissions,
             count: permissions.length
         });
-        
+
     } catch (error) {
         console.error('Error in getAllPermissionsHandler:', error);
         next(error);
