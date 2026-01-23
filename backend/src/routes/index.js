@@ -67,14 +67,14 @@ router.put('/cards/:id/deactivate', authenticateToken, requireRole('admin'), car
 // DELETE /api/cards/:id - Xóa thẻ
 router.delete('/cards/:id', authenticateToken, requireRole('admin'), cardController.deleteCardHandler);
 
-// GET /api/cards/:cardId/permission - Lấy permission của card
-router.get('/cards/:cardId/permission', authenticateToken, requireRole('admin', 'security'), cardController.getCardPermissionHandler);
+// GET /api/cards/:cardId/permissions - Lấy permission của card
+router.get('/cards/:cardId/permissions', authenticateToken, requireRole('admin', 'security'), cardController.getCardPermissionHandler);
 
-// PUT /api/cards/:cardId/permission - Gán permission cho card (admin only)
-router.put('/cards/:cardId/permission', authenticateToken, requireRole('admin'), cardController.assignPermissionHandler);
+// PUT /api/cards/:cardId/permissions - Gán permission cho card (admin only)
+router.put('/cards/:cardId/permissions', authenticateToken, requireRole('admin'), cardController.assignPermissionHandler);
 
-// DELETE /api/cards/:cardId/permission - Xóa permission của card (admin only)
-router.delete('/cards/:cardId/permission', authenticateToken, requireRole('admin'), cardController.removePermissionHandler);
+// DELETE /api/cards/:cardId/permissions - Xóa permission của card (admin only)
+router.delete('/cards/:cardId/permissions', authenticateToken, requireRole('admin'), cardController.removePermissionHandler);
 
 
 
