@@ -1,4 +1,3 @@
-
 const { findPermissionById, hasAccessToDoor, checkTimeRestrictions } = require('../models/Permission');
 
 async function checkAccessPermission(card, door, user) {
@@ -34,17 +33,17 @@ async function checkAccessPermission(card, door, user) {
         return { granted: true, reason: null };
     }
 
-    // 5. Kiểm tra permission của user
-    if (!user.permission_id) {
+    // 5. Kiểm tra permission của CARD (KHÔNG PHẢI USER)
+    if (!card.permission_id) {
         return {
             granted: false,
-            reason: 'User chưa được gán quyền truy cập'
+            reason: 'Thẻ chưa được gán quyền truy cập'
         };
     }
 
     try {
-        // Lấy thông tin permission
-        const permission = await findPermissionById(user.permission_id);
+        // Lấy thông tin permission từ CARD
+        const permission = await findPermissionById(card.permission_id);
 
         if (!permission) {
             return {

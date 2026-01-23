@@ -164,6 +164,57 @@ async function deactivateExpiredCards() {
     return result.affectedRows; // Trả về số lượng thẻ vừa bị khóa
 }
 
+// Gán permission cho card
+async function assignPermissionToCard(cardId, permissionId) {
+    const sql = 'UPDATE cards SET permission_id = ? WHERE id = ?';
+    const result = await executeQuery(sql, [permissionId, cardId]);
+    return result.affectedRows > 0;
+}
+
+// Xóa permission của card
+async function removePermissionFromCard(cardId) {
+    const sql = 'UPDATE cards SET permission_id = NULL WHERE id = ?';
+    const result = await executeQuery(sql, [cardId]);
+    return result.affectedRows > 0;
+}
+
+// Lấy card với thông tin permission
+async function getCardWithPermission(cardId) {
+    const sql = `
+        SELECT 
+            c.*,
+            u.full_name, u.email, u.employee_id,
+            u.department_id, u.position, u.role,
+            u.is_active as user_is_active,
+            d.name as department_name,
+            p.id as permission_id,
+            p.name as permission_name,
+            p.door_access_mode,
+            p.priority
+        FROM cards c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        LEFT JOIN permissions p ON c.permission_id = p.id
+        WHERE c.id = ?
+    `;
+    return await getOneRow(sql, [cardId]);
+}
+
+// Lấy tất cả cards có permission cụ thể
+async function getCardsByPermission(permissionId) {
+    const sql = `
+        SELECT 
+            c.*,
+            u.full_name, u.email, u.employee_id,
+            d.name as department_name
+        FROM cards c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        WHERE c.permission_id = ?
+        ORDER BY c.created_at DESC
+    `;
+    return await executeQuery(sql, [permissionId]);
+}
 
 module.exports = {
     findCardById,
@@ -175,5 +226,9 @@ module.exports = {
     activateCard,
     deactivateCard,
     deleteCard,
-    deactivateExpiredCards
+    deactivateExpiredCards,
+    assignPermissionToCard,
+    removePermissionFromCard,
+    getCardWithPermission,
+    getCardsByPermission
 };

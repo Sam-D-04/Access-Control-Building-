@@ -177,38 +177,6 @@ async function verifyPassword(plainPassword, hashedPassword) {
     return isMatch;
 }
 
-// Lấy user với thông tin permission
-async function getUserWithPermission(userId) {
-    const sql = `
-        SELECT 
-            u.*,
-            d.name as department_name,
-            p.id as permission_id,
-            p.name as permission_name,
-            p.door_access_mode,
-            p.priority
-        FROM users u
-        LEFT JOIN departments d ON u.department_id = d.id
-        LEFT JOIN permissions p ON u.permission_id = p.id
-        WHERE u.id = ?
-    `;
-    return await getOneRow(sql, [userId]);
-}
-
-// Gán permission cho user
-async function assignPermissionToUser(userId, permissionId) {
-    const sql = 'UPDATE users SET permission_id = ? WHERE id = ?';
-    const result = await executeQuery(sql, [permissionId, userId]);
-    return result.affectedRows > 0;
-}
-
-// Xóa permission của user
-async function removePermissionFromUser(userId) {
-    const sql = 'UPDATE users SET permission_id = NULL WHERE id = ?';
-    const result = await executeQuery(sql, [userId]);
-    return result.affectedRows > 0;
-}
-
 
 module.exports = {
     findUserByEmail,
@@ -218,8 +186,6 @@ module.exports = {
     createUser,
     updateUser,
     deleteUser,
-    verifyPassword,
-    getUserWithPermission,
-    assignPermissionToUser,
-    removePermissionFromUser
+    verifyPassword
+
 };

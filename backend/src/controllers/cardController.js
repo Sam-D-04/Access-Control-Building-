@@ -6,7 +6,10 @@ const {
     updateCard,
     activateCard,
     deactivateCard,
-    deleteCard
+    deleteCard,
+    assignPermissionToCard, 
+    removePermissionFromCard,
+    getCardWithPermission 
 } = require('../models/Card');
 
 // GET /api/cards - Lấy danh sách tất cả thẻ
@@ -197,6 +200,127 @@ async function deleteCardHandler(req, res, next) {
     }
 }
 
+
+// PUT /api/cards/:cardId/permission - Gán permission cho card
+async function assignPermissionHandler(req, res, next) {
+    try {
+        const cardId = req.params.cardId;
+        const { permission_id } = req.body;
+
+        // Validate
+        if (!permission_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'permission_id là bắt buộc'
+            });
+        }
+
+        // Kiểm tra card có tồn tại không
+        const card = await findCardById(cardId);
+        if (!card) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy thẻ'
+            });
+        }
+
+        // Gán permission
+        const updated = await assignPermissionToCard(cardId, permission_id);
+
+        if (!updated) {
+            return res.status(500).json({
+                success: false,
+                message: 'Gán permission thất bại'
+            });
+        }
+
+        console.log('Permission', permission_id, 'assigned to card', cardId, 'by', req.user?.full_name || 'system');
+
+        // Lấy lại thông tin card với permission
+        const updatedCard = await getCardWithPermission(cardId);
+
+        return res.json({
+            success: true,
+            message: 'Gán permission thành công',
+            data: updatedCard
+        });
+
+    } catch (error) {
+        console.error('Error in assignPermissionHandler:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            return res.status(400).json({
+                success: false,
+                message: 'Permission ID không hợp lệ'
+            });
+        }
+
+        next(error);
+    }
+}
+
+// DELETE /api/cards/:cardId/permission - Xóa permission của card
+async function removePermissionHandler(req, res, next) {
+    try {
+        const cardId = req.params.cardId;
+
+        // Kiểm tra card có tồn tại không
+        const card = await findCardById(cardId);
+        if (!card) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy thẻ'
+            });
+        }
+
+        // Xóa permission
+        const removed = await removePermissionFromCard(cardId);
+
+        if (!removed) {
+            return res.status(500).json({
+                success: false,
+                message: 'Xóa permission thất bại'
+            });
+        }
+
+        console.log('Permission removed from card', cardId, 'by', req.user?.full_name || 'system');
+
+        return res.json({
+            success: true,
+            message: 'Đã xóa permission của thẻ'
+        });
+
+    } catch (error) {
+        console.error('Error in removePermissionHandler:', error);
+        next(error);
+    }
+}
+
+// GET /api/cards/:cardId/permission - Lấy thông tin permission của card
+async function getCardPermissionHandler(req, res, next) {
+    try {
+        const cardId = req.params.cardId;
+
+        const card = await getCardWithPermission(cardId);
+
+        if (!card) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy thẻ'
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: card
+        });
+
+    } catch (error) {
+        console.error('Error in getCardPermissionHandler:', error);
+        next(error);
+    }
+}
+
 module.exports = {
     getAllCardsHandler,
     getCardByIdHandler,
@@ -204,5 +328,8 @@ module.exports = {
     updateCardHandler,
     activateCardHandler,
     deactivateCardHandler,
-    deleteCardHandler
+    deleteCardHandler,
+    assignPermissionHandler,
+    removePermissionHandler,
+    getCardPermissionHandler
 };
