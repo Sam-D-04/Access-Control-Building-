@@ -15,7 +15,7 @@ async function captureVisitorPhoto(req, res, next) {
 
         // INSERT vào DB
         const sql = `
-            INSERT INTO visitor_photos (photo_path, notes)
+            INSERT INTO visitor (photo_path, notes)
             VALUES (?, ?)
         `;
 
@@ -23,7 +23,7 @@ async function captureVisitorPhoto(req, res, next) {
 
         // Lấy lại record vừa tạo
         const newPhoto = await getOneRow(`
-            SELECT * FROM visitor_photos WHERE id = ?
+            SELECT * FROM visitor WHERE id = ?
         `, [result.insertId]);
 
         // Trả về response
@@ -87,15 +87,15 @@ async function getVisitorPhotos(req, res, next) {
 
         // ===== QUERY DANH SÁCH =====
         const sql = whereSQL
-            ? `SELECT * FROM visitor_photos ${whereSQL} ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`
-            : `SELECT * FROM visitor_photos ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
+            ? `SELECT * FROM visitor ${whereSQL} ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`
+            : `SELECT * FROM visitor ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
 
         const photos = await executeQuery(sql, whereParams);
 
         // ===== ĐẾM TỔNG SỐ =====
         const countSQL = whereSQL
-            ? `SELECT COUNT(*) as total FROM visitor_photos ${whereSQL}`
-            : `SELECT COUNT(*) as total FROM visitor_photos`;
+            ? `SELECT COUNT(*) as total FROM visitor ${whereSQL}`
+            : `SELECT COUNT(*) as total FROM visitor`;
         const countResult = await getOneRow(countSQL, whereParams);
 
         // ===== RESPONSE =====
@@ -123,11 +123,11 @@ async function deleteVisitorPhoto(req, res, next) {
         const { id } = req.params;
         
         // Kiểm tra tồn tại
-        const photo = await getOneRow('SELECT * FROM visitor_photos WHERE id = ?', [id]);
+        const photo = await getOneRow('SELECT * FROM visitor WHERE id = ?', [id]);
         if (!photo) throw new CustomError('Không tìm thấy ảnh', 404);
 
         // Xóa khỏi DB
-        await executeQuery('DELETE FROM visitor_photos WHERE id = ?', [id]);
+        await executeQuery('DELETE FROM visitor WHERE id = ?', [id]);
 
         res.json({ success: true, message: 'Đã xóa ảnh thành công' });
     } catch (error) {
@@ -140,7 +140,7 @@ async function getVisitorPhotoById(req, res, next) {
     try {
         const { id } = req.params;  
         
-        const photo = await getOneRow('SELECT * FROM visitor_photos WHERE id = ?', [id]);
+        const photo = await getOneRow('SELECT * FROM visitor WHERE id = ?', [id]);
         
         if (!photo) throw new CustomError('Không tìm thấy ảnh', 404);
         
@@ -160,7 +160,7 @@ async function checkoutVisitor(req, res, next) {
         }
 
         // Lấy thông tin visitor hiện tại
-        const visitor = await getOneRow('SELECT notes FROM visitor_photos WHERE id = ?', [id]);
+        const visitor = await getOneRow('SELECT notes FROM visitor WHERE id = ?', [id]);
 
         if (!visitor) {
             throw new CustomError('Không tìm thấy visitor', 404);
@@ -185,7 +185,7 @@ async function checkoutVisitor(req, res, next) {
 
         // UPDATE với notes mới
         const sql = `
-            UPDATE visitor_photos
+            UPDATE visitor
             SET checkout_photo_path = ?,
                 is_checkout = 1,
                 time_out = NOW(),
@@ -229,8 +229,8 @@ async function getVisitorStats(req, res, next) {
 
         // ===== QUERY THỐNG KÊ =====
         const sql = whereClause
-            ? `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor_photos ${whereClause}`
-            : `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor_photos`;
+            ? `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor ${whereClause}`
+            : `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor`;
 
         const result = await getOneRow(sql, params);
 
