@@ -1,304 +1,312 @@
 const { executeQuery, getOneRow } = require('../config/database');
 
-// --- HÀM HELPER: Parse JSON an toàn ---
-function safeJsonParse(data, fallbackValue) {
-    if (!data) return fallbackValue;
-    // Nếu driver MySQL đã tự parse thành object/array thì trả về luôn
-    if (typeof data === 'object') return data;
-    
-    try {
-        return JSON.parse(data);
-    } catch (error) {
-        // Nếu lỗi parse, thử kiểm tra xem có phải dạng "1,2,3" không
-        if (typeof data === 'string' && data.includes(',')) {
-            // Chuyển "1, 2" thành [1, 2]
-            return data.split(',').map(item => {
-                const num = Number(item.trim());
-                return isNaN(num) ? item.trim() : num;
-            });
-        }
-        console.warn(`Warning: Could not parse JSON data: ${data}`);
-        return fallbackValue;
-    }
-}
-
-// Tìm permission theo ID
-async function findPermissionById(permissionId) {
-    const sql = `
-        SELECT * FROM permissions
-        WHERE id = ?
-    `;
-    const permission = await getOneRow(sql, [permissionId]);
-
-    // Parse JSON fields an toàn
-    if (permission) {
-        permission.allowed_door_ids = safeJsonParse(permission.allowed_door_ids, []);
-        permission.time_restrictions = safeJsonParse(permission.time_restrictions, null);
-    }
-
-    return permission;
-}
-
 // Lấy tất cả permissions
-async function getAllPermissions(activeOnly = false) {
-    let sql = `SELECT * FROM permissions`;
-
-    if (activeOnly) {
-        sql += ` WHERE is_active = TRUE`;
-    }
-
-    sql += ` ORDER BY priority DESC, name ASC`;
-
-    const results = await executeQuery(sql);
-
-    // Parse JSON fields cho tất cả records
-    return results.map(permission => {
-        permission.allowed_door_ids = safeJsonParse(permission.allowed_door_ids, []);
-        permission.time_restrictions = safeJsonParse(permission.time_restrictions, null);
-        return permission;
+async function getAllPermissions() {
+    const sql = `
+        SELECT * FROM permissions 
+        WHERE is_active = 1
+        ORDER BY priority DESC
+    `;
+    const permissions = await executeQuery(sql, []);
+    
+    // Parse JSON cho mỗi permission
+    return permissions.map(p => {
+        if (p.time_restrictions) {
+            p.time_restrictions = JSON.parse(p.time_restrictions);
+        }
+        return p;
     });
+}
+
+// Tìm permission theo ID (kèm danh sách doors)
+async function findPermissionById(permissionId) {
+    const sql = 'SELECT * FROM permissions WHERE id = ?';
+    const permission = await getOneRow(sql, [permissionId]);
+    
+    if (!permission) {
+        return null;
+    }
+    
+    // Parse JSON time_restrictions
+    if (permission.time_restrictions) {
+        permission.time_restrictions = JSON.parse(permission.time_restrictions);
+    }
+    
+    // Lấy danh sách doors (nếu mode = 'specific')
+    if (permission.door_access_mode === 'specific') {
+        const doorsSql = `
+            SELECT d.id, d.name, d.location
+            FROM doors d
+            INNER JOIN permission_doors pd ON d.id = pd.door_id
+            WHERE pd.permission_id = ?
+            ORDER BY d.name
+        `;
+        const doors = await executeQuery(doorsSql, [permissionId]);
+        
+        permission.doors = doors;
+        permission.door_ids = doors.map(d => d.id);
+    } else {
+        permission.doors = [];
+        permission.door_ids = [];
+    }
+    
+    return permission;
 }
 
 // Tạo permission mới
 async function createPermission(permissionData) {
-    const {
-        name,
-        description,
-        door_access_mode = 'specific',
-        allowed_door_ids = null,
-        time_restrictions = null,
-        priority = 0,
-        is_active = true
-    } = permissionData;
-
-    const sql = `
-        INSERT INTO permissions
-        (name, description, door_access_mode, allowed_door_ids, time_restrictions, priority, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const params = [
-        name,
-        description,
-        door_access_mode,
-        allowed_door_ids ? JSON.stringify(allowed_door_ids) : null,
-        time_restrictions ? JSON.stringify(time_restrictions) : null,
-        priority,
-        is_active
-    ];
-
-    const result = await executeQuery(sql, params);
-    return result.insertId;
+    const { name, description, door_access_mode, time_restrictions, priority, door_ids } = permissionData;
+    
+    // Begin transaction
+    await executeQuery('START TRANSACTION', []);
+    
+    try {
+        // Insert permission
+        const sql = `
+            INSERT INTO permissions (name, description, door_access_mode, time_restrictions, priority)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        
+        const params = [
+            name,
+            description || null,
+            door_access_mode || 'specific',
+            time_restrictions ? JSON.stringify(time_restrictions) : null,
+            priority || 0
+        ];
+        
+        const result = await executeQuery(sql, params);
+        const permissionId = result.insertId;
+        
+        // Nếu mode = 'specific', insert vào permission_doors
+        if (door_access_mode === 'specific' && door_ids && door_ids.length > 0) {
+            const doorSql = 'INSERT INTO permission_doors (permission_id, door_id) VALUES ?';
+            const values = door_ids.map(doorId => [permissionId, doorId]);
+            await executeQuery(doorSql, [values]);
+        }
+        
+        await executeQuery('COMMIT', []);
+        return await findPermissionById(permissionId);
+        
+    } catch (error) {
+        await executeQuery('ROLLBACK', []);
+        throw error;
+    }
 }
 
 // Cập nhật permission
-async function updatePermission(permissionId, updateData) {
-    const {
-        name,
-        description,
-        door_access_mode,
-        allowed_door_ids,
-        time_restrictions,
-        priority,
-        is_active
-    } = updateData;
-
-    const sql = `
-        UPDATE permissions
-        SET
-            name = COALESCE(?, name),
-            description = COALESCE(?, description),
-            door_access_mode = COALESCE(?, door_access_mode),
-            allowed_door_ids = COALESCE(?, allowed_door_ids),
-            time_restrictions = COALESCE(?, time_restrictions),
-            priority = COALESCE(?, priority),
-            is_active = COALESCE(?, is_active),
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    `;
-
-    const params = [
-        name || null,
-        description || null,
-        door_access_mode || null,
-        allowed_door_ids ? JSON.stringify(allowed_door_ids) : null,
-        time_restrictions ? JSON.stringify(time_restrictions) : null,
-        priority !== undefined ? priority : null,
-        is_active !== undefined ? is_active : null,
-        permissionId
-    ];
-
-    const result = await executeQuery(sql, params);
-    return result.affectedRows > 0;
+async function updatePermission(permissionId, permissionData) {
+    const { name, description, door_access_mode, time_restrictions, priority, is_active, door_ids } = permissionData;
+    
+    await executeQuery('START TRANSACTION', []);
+    
+    try {
+        // Update permission
+        const sql = `
+            UPDATE permissions
+            SET name = ?, 
+                description = ?,
+                door_access_mode = ?,
+                time_restrictions = ?,
+                priority = ?,
+                is_active = ?
+            WHERE id = ?
+        `;
+        
+        const params = [
+            name,
+            description || null,
+            door_access_mode || 'specific',
+            time_restrictions ? JSON.stringify(time_restrictions) : null,
+            priority || 0,
+            is_active !== undefined ? is_active : 1,
+            permissionId
+        ];
+        
+        await executeQuery(sql, params);
+        
+        // Nếu mode = 'specific', cập nhật permission_doors
+        if (door_access_mode === 'specific') {
+            // Xóa tất cả liên kết cũ
+            await executeQuery('DELETE FROM permission_doors WHERE permission_id = ?', [permissionId]);
+            
+            // Thêm liên kết mới
+            if (door_ids && door_ids.length > 0) {
+                const doorSql = 'INSERT INTO permission_doors (permission_id, door_id) VALUES ?';
+                const values = door_ids.map(doorId => [permissionId, doorId]);
+                await executeQuery(doorSql, [values]);
+            }
+        } else {
+            // Nếu mode không phải 'specific', xóa tất cả liên kết
+            await executeQuery('DELETE FROM permission_doors WHERE permission_id = ?', [permissionId]);
+        }
+        
+        await executeQuery('COMMIT', []);
+        return await findPermissionById(permissionId);
+        
+    } catch (error) {
+        await executeQuery('ROLLBACK', []);
+        throw error;
+    }
 }
 
-// Xóa permission
-async function deletePermission(permissionId, hardDelete = false) {
-    let sql;
-    if (hardDelete) {
-        sql = `DELETE FROM permissions WHERE id = ?`;
-    } else {
-        sql = `UPDATE permissions SET is_active = FALSE WHERE id = ?`;
-    }
+// Xóa permission (soft delete)
+async function deletePermission(permissionId) {
+    const sql = 'UPDATE permissions SET is_active = 0 WHERE id = ?';
     const result = await executeQuery(sql, [permissionId]);
     return result.affectedRows > 0;
 }
 
-// ===============================================
-// CARD_PERMISSIONS TABLE
-// ===============================================
-
-async function getCardPermissions(cardId) {
-    const sql = `
-        SELECT
-            cp.*,
-            p.name as permission_name,
-            p.description as permission_description,
-            p.door_access_mode,
-            p.allowed_door_ids as base_allowed_door_ids,
-            p.time_restrictions as base_time_restrictions,
-            p.priority
-        FROM card_permissions cp
-        JOIN permissions p ON p.id = cp.permission_id
-        WHERE cp.card_id = ? AND cp.is_active = TRUE AND p.is_active = TRUE
-        ORDER BY p.priority DESC
-    `;
-
-    const results = await executeQuery(sql, [cardId]);
-
-    // Sử dụng safeJsonParse thay vì JSON.parse trực tiếp
-    return results.map(row => {
-        row.custom_door_ids = safeJsonParse(row.custom_door_ids, null);
-        row.additional_door_ids = safeJsonParse(row.additional_door_ids, null);
-        row.custom_time_restrictions = safeJsonParse(row.custom_time_restrictions, null);
-        row.base_allowed_door_ids = safeJsonParse(row.base_allowed_door_ids, null);
-        row.base_time_restrictions = safeJsonParse(row.base_time_restrictions, null);
-        return row;
-    });
-}
-
-async function assignPermissionToCard(data) {
-    const {
-        card_id,
-        permission_id,
-        override_doors = false,
-        custom_door_ids = null,
-        override_time = false,
-        custom_time_restrictions = null,
-        additional_door_ids = null,
-        valid_from = null,
-        valid_until = null,
-        is_active = true
-    } = data;
-
-    const sql = `
-        INSERT INTO card_permissions
-        (card_id, permission_id, override_doors, custom_door_ids, override_time,
-         custom_time_restrictions, additional_door_ids, valid_from, valid_until, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const params = [
-        card_id,
-        permission_id,
-        override_doors,
-        custom_door_ids ? JSON.stringify(custom_door_ids) : null,
-        override_time,
-        custom_time_restrictions ? JSON.stringify(custom_time_restrictions) : null,
-        additional_door_ids ? JSON.stringify(additional_door_ids) : null,
-        valid_from,
-        valid_until,
-        is_active
-    ];
-
-    const result = await executeQuery(sql, params);
-    return result.insertId;
-}
-
-async function updateCardPermission(cardPermissionId, updateData) {
-    const {
-        override_doors,
-        custom_door_ids,
-        override_time,
-        custom_time_restrictions,
-        additional_door_ids,
-        valid_from,
-        valid_until,
-        is_active
-    } = updateData;
-
-    const sql = `
-        UPDATE card_permissions
-        SET
-            override_doors = COALESCE(?, override_doors),
-            custom_door_ids = COALESCE(?, custom_door_ids),
-            override_time = COALESCE(?, override_time),
-            custom_time_restrictions = COALESCE(?, custom_time_restrictions),
-            additional_door_ids = COALESCE(?, additional_door_ids),
-            valid_from = COALESCE(?, valid_from),
-            valid_until = COALESCE(?, valid_until),
-            is_active = COALESCE(?, is_active),
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    `;
-
-    const params = [
-        override_doors !== undefined ? override_doors : null,
-        custom_door_ids ? JSON.stringify(custom_door_ids) : null,
-        override_time !== undefined ? override_time : null,
-        custom_time_restrictions ? JSON.stringify(custom_time_restrictions) : null,
-        additional_door_ids ? JSON.stringify(additional_door_ids) : null,
-        valid_from || null,
-        valid_until || null,
-        is_active !== undefined ? is_active : null,
-        cardPermissionId
-    ];
-
-    const result = await executeQuery(sql, params);
+// Xóa permission vĩnh viễn (hard delete - CASCADE sẽ tự động xóa permission_doors)
+async function permanentDeletePermission(permissionId) {
+    const sql = 'DELETE FROM permissions WHERE id = ?';
+    const result = await executeQuery(sql, [permissionId]);
     return result.affectedRows > 0;
 }
 
-async function removePermissionFromCard(cardPermissionId) {
-    const sql = `DELETE FROM card_permissions WHERE id = ?`;
-    const result = await executeQuery(sql, [cardPermissionId]);
-    return result.affectedRows > 0;
-}
-
-async function removeAllCardPermissions(cardId) {
-    const sql = `DELETE FROM card_permissions WHERE card_id = ?`;
-    const result = await executeQuery(sql, [cardId]);
-    return result.affectedRows > 0;
-}
-
-async function getCardsByPermission(permissionId) {
+// Thêm door vào permission
+async function addDoorToPermission(permissionId, doorId) {
     const sql = `
-        SELECT
-            c.*,
-            u.full_name,
-            u.email,
-            u.employee_id,
-            cp.is_active as assignment_active,
-            cp.valid_from,
-            cp.valid_until
-        FROM card_permissions cp
-        JOIN cards c ON c.id = cp.card_id
-        LEFT JOIN users u ON u.id = c.user_id
-        WHERE cp.permission_id = ? AND cp.is_active = TRUE
-        ORDER BY u.full_name
+        INSERT IGNORE INTO permission_doors (permission_id, door_id)
+        VALUES (?, ?)
     `;
-    return executeQuery(sql, [permissionId]);
+    await executeQuery(sql, [permissionId, doorId]);
+    return true;
+}
+
+// Xóa door khỏi permission
+async function removeDoorFromPermission(permissionId, doorId) {
+    const sql = `
+        DELETE FROM permission_doors
+        WHERE permission_id = ? AND door_id = ?
+    `;
+    const result = await executeQuery(sql, [permissionId, doorId]);
+    return result.affectedRows > 0;
+}
+
+// Lấy danh sách doors được phép cho permission
+async function getAllowedDoors(permissionId) {
+    const permissionSql = 'SELECT door_access_mode FROM permissions WHERE id = ?';
+    const permission = await getOneRow(permissionSql, [permissionId]);
+    
+    if (!permission) {
+        return [];
+    }
+    
+    const { door_access_mode } = permission;
+    
+    // Nếu mode = 'all', trả về tất cả doors
+    if (door_access_mode === 'all') {
+        const sql = 'SELECT * FROM doors WHERE is_active = 1';
+        return await executeQuery(sql, []);
+    }
+    
+    // Nếu mode = 'none', trả về mảng rỗng
+    if (door_access_mode === 'none') {
+        return [];
+    }
+    
+    // Nếu mode = 'specific', JOIN với permission_doors
+    const sql = `
+        SELECT d.*
+        FROM doors d
+        INNER JOIN permission_doors pd ON d.id = pd.door_id
+        WHERE pd.permission_id = ? AND d.is_active = 1
+    `;
+    return await executeQuery(sql, [permissionId]);
+}
+
+// Kiểm tra permission có quyền vào door không
+async function hasAccessToDoor(permissionId, doorId) {
+    const sql = 'SELECT door_access_mode FROM permissions WHERE id = ? AND is_active = 1';
+    const permission = await getOneRow(sql, [permissionId]);
+    
+    if (!permission) {
+        return false;
+    }
+    
+    const { door_access_mode } = permission;
+    
+    // Nếu mode = 'all', có quyền vào tất cả
+    if (door_access_mode === 'all') {
+        return true;
+    }
+    
+    // Nếu mode = 'none', không có quyền
+    if (door_access_mode === 'none') {
+        return false;
+    }
+    
+    // Nếu mode = 'specific', kiểm tra trong permission_doors
+    const checkSql = `
+        SELECT 1 FROM permission_doors
+        WHERE permission_id = ? AND door_id = ?
+        LIMIT 1
+    `;
+    const rows = await executeQuery(checkSql, [permissionId, doorId]);
+    return rows.length > 0;
+}
+
+// Kiểm tra time restrictions
+function checkTimeRestrictions(permission, accessTime = new Date()) {
+    if (!permission.time_restrictions) {
+        return { allowed: true };
+    }
+    
+    const restrictions = typeof permission.time_restrictions === 'string'
+        ? JSON.parse(permission.time_restrictions)
+        : permission.time_restrictions;
+    
+    const { start_time, end_time, allowed_days } = restrictions;
+    
+    // Kiểm tra ngày trong tuần (1=Monday, 7=Sunday)
+    const dayOfWeek = accessTime.getDay() || 7; // 0=Sunday -> 7
+    if (allowed_days && !allowed_days.includes(dayOfWeek)) {
+        return {
+            allowed: false,
+            reason: `Không được phép truy cập vào ngày ${['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][accessTime.getDay()]}`
+        };
+    }
+    
+    // Kiểm tra giờ
+    if (start_time && end_time) {
+        const currentTime = accessTime.getHours() * 60 + accessTime.getMinutes();
+        const [startHour, startMin] = start_time.split(':').map(Number);
+        const [endHour, endMin] = end_time.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+        
+        // Xử lý trường hợp qua nửa đêm (ví dụ: 18:00 - 06:00)
+        if (startMinutes > endMinutes) {
+            if (currentTime < startMinutes && currentTime > endMinutes) {
+                return {
+                    allowed: false,
+                    reason: `Ngoài giờ cho phép truy cập (${start_time} - ${end_time})`
+                };
+            }
+        } else {
+            if (currentTime < startMinutes || currentTime > endMinutes) {
+                return {
+                    allowed: false,
+                    reason: `Ngoài giờ cho phép truy cập (${start_time} - ${end_time})`
+                };
+            }
+        }
+    }
+    
+    return { allowed: true };
 }
 
 module.exports = {
-    findPermissionById,
     getAllPermissions,
+    findPermissionById,
     createPermission,
     updatePermission,
     deletePermission,
-    getCardPermissions,
-    assignPermissionToCard,
-    updateCardPermission,
-    removePermissionFromCard,
-    removeAllCardPermissions,
-    getCardsByPermission
+    permanentDeletePermission,
+    addDoorToPermission,
+    removeDoorFromPermission,
+    getAllowedDoors,
+    hasAccessToDoor,
+    checkTimeRestrictions
 };
