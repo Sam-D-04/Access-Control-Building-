@@ -225,18 +225,15 @@ export default function MobilePage() {
             </div>
           )}
 
-          {/* Hiển thị chi tiết lỗi khi DENIED - Rút gọn */}
+          {/* Hiển thị lý do từ chối - Chỉ lý do đơn giản */}
           {lastAccess.status === 'denied' && lastAccess.denial_details && lastAccess.denial_details.length > 0 && (
             <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-2.5 max-h-40 overflow-y-auto">
               <p className="text-white text-xs font-bold mb-2 text-center">
-                Lý do từ chối:
+                Lý do:
               </p>
               <div className="space-y-1.5">
                 {lastAccess.denial_details.map((detail: any, index: number) => (
                   <div key={index} className="bg-white bg-opacity-10 rounded p-2">
-                    <p className="text-white text-xs font-semibold mb-0.5 opacity-75">
-                      {detail.permission_name}
-                    </p>
                     <p className="text-white text-xs">{detail.reason}</p>
                   </div>
                 ))}

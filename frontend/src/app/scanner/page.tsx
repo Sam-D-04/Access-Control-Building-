@@ -280,18 +280,15 @@ export default function ScannerPage() {
               </div>
             )}
 
-            {/* Hiển thị chi tiết lỗi khi DENIED - Rút gọn hơn */}
+            {/* Hiển thị lý do từ chối - Chỉ lý do, không có tên permission */}
             {lastResult.status === 'denied' && lastResult.denial_details && lastResult.denial_details.length > 0 && (
               <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4 text-left max-h-56 overflow-y-auto">
                 <p className="text-white text-base font-bold mb-3 text-center">
-                  Lý do từ chối:
+                  Lý do:
                 </p>
                 <div className="space-y-2">
                   {lastResult.denial_details.map((detail, index) => (
-                    <div key={index} className="bg-white bg-opacity-10 rounded-lg p-2.5">
-                      <p className="text-white text-xs font-semibold mb-1 opacity-75">
-                        {detail.permission_name}
-                      </p>
+                    <div key={index} className="bg-white bg-opacity-10 rounded-lg p-3">
                       <p className="text-white text-sm">{detail.reason}</p>
                     </div>
                   ))}
