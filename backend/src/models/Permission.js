@@ -9,10 +9,13 @@ async function getAllPermissions() {
     `;
     const permissions = await executeQuery(sql, []);
     
-    // Parse JSON cho mỗi permission
+    // Parse JSON cho mỗi permission (chỉ khi là string)
     return permissions.map(p => {
-        if (p.time_restrictions) {
+        if (p.time_restrictions && typeof p.time_restrictions === 'string') {
             p.time_restrictions = JSON.parse(p.time_restrictions);
+        }
+        if (p.allowed_door_ids && typeof p.allowed_door_ids === 'string') {
+            p.allowed_door_ids = JSON.parse(p.allowed_door_ids);
         }
         return p;
     });
@@ -27,9 +30,12 @@ async function findPermissionById(permissionId) {
         return null;
     }
     
-    // Parse JSON time_restrictions
-    if (permission.time_restrictions) {
+    // Parse JSON time_restrictions (chỉ khi là string)
+    if (permission.time_restrictions && typeof permission.time_restrictions === 'string') {
         permission.time_restrictions = JSON.parse(permission.time_restrictions);
+    }
+    if (permission.allowed_door_ids && typeof permission.allowed_door_ids === 'string') {
+        permission.allowed_door_ids = JSON.parse(permission.allowed_door_ids);
     }
     
     // Lấy danh sách doors (nếu mode = 'specific')
