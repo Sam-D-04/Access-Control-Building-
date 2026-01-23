@@ -122,7 +122,7 @@ export const permissionAPI = {
 
   // Card Permission Assignment
   getCardPermissions: (cardId: number) => api.get(`/cards/${cardId}/permissions`),
-  assignToCard: (cardId: number, data: any) => api.post(`/cards/${cardId}/permissions`, data),
+  assignToCard: (cardId: number, data: any) => api.put(`/cards/${cardId}/permissions`, data),
   updateCardPermission: (id: number, data: any) => api.put(`/card-permissions/${id}`, data),
   removeFromCard: (id: number) => api.delete(`/card-permissions/${id}`),
   removeAllFromCard: (cardId: number) => api.delete(`/cards/${cardId}/permissions`),

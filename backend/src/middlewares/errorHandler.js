@@ -21,6 +21,13 @@ function handleError(error, req, res, next) {
     let errorMessage = error.message;
     if (!errorMessage) {
         errorMessage = 'Lỗi server';
+    } else if (typeof errorMessage === 'object') {
+        // Nếu message là object, stringify nó
+        try {
+            errorMessage = JSON.stringify(errorMessage);
+        } catch (e) {
+            errorMessage = 'Lỗi server (không thể parse error message)';
+        }
     }
 
     // Tạo response object
