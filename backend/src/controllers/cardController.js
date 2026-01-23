@@ -296,7 +296,7 @@ async function removePermissionHandler(req, res, next) {
     }
 }
 
-// GET /api/cards/:cardId/permission - Lấy thông tin permission của card
+// GET /api/cards/:cardId/permissions - Lấy danh sách permissions của card
 async function getCardPermissionHandler(req, res, next) {
     try {
         const cardId = req.params.cardId;
@@ -310,9 +310,20 @@ async function getCardPermissionHandler(req, res, next) {
             });
         }
 
+        // Tạo array response theo format frontend expect
+        const permissions = [];
+        if (card.permission_id) {
+            permissions.push({
+                id: card.permission_id,
+                card_id: card.id,
+                permission_id: card.permission_id,
+                permission_name: card.permission_name || 'N/A'
+            });
+        }
+
         return res.json({
             success: true,
-            data: card
+            data: permissions  // Trả về array thay vì card object
         });
 
     } catch (error) {

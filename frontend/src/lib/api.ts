@@ -120,11 +120,11 @@ export const permissionAPI = {
     api.delete(`/permissions/${id}`, { params: hardDelete ? { hard_delete: false } : {hard_delete: true} }),
   getCards: (id: number) => api.get(`/permissions/${id}/cards`),
 
-  // Card Permission Assignment
+  // Card Permission Assignment (Many-to-Many)
   getCardPermissions: (cardId: number) => api.get(`/cards/${cardId}/permissions`),
   assignToCard: (cardId: number, data: any) => api.put(`/cards/${cardId}/permissions`, data),
   updateCardPermission: (id: number, data: any) => api.put(`/card-permissions/${id}`, data),
-  removeFromCard: (id: number) => api.delete(`/card-permissions/${id}`),
+  removeFromCard: (cardPermissionId: number) => api.delete(`/card-permissions/${cardPermissionId}`),
   removeAllFromCard: (cardId: number) => api.delete(`/cards/${cardId}/permissions`),
 }
 
