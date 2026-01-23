@@ -13,6 +13,13 @@ interface ScanResult {
   door_name?: string
   message: string
   time: string
+  checked_permissions?: number
+  denial_details?: Array<{
+    granted: boolean
+    reason: string
+    permission_name: string
+  }>
+  matched_permission?: string
 }
 
 interface Door {
@@ -95,6 +102,9 @@ export default function ScannerPage() {
         door_name: doors.find((d) => d.id === selectedDoor)?.name,
         message: response.data.message,
         time: new Date().toLocaleTimeString('vi-VN'),
+        checked_permissions: response.data.data?.checked_permissions,
+        denial_details: response.data.data?.denial_details,
+        matched_permission: response.data.data?.matched_permission,
       })
 
       //tự động scan lại sau 2 giây
@@ -258,6 +268,33 @@ export default function ScannerPage() {
               <p className="text-white text-lg opacity-90 mb-2">{lastResult.message}</p>
               <p className="text-white text-sm opacity-75">{lastResult.time}</p>
             </div>
+
+            {/* Hiển thị chi tiết khi GRANTED */}
+            {lastResult.status === 'granted' && lastResult.matched_permission && (
+              <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4">
+                <p className="text-white text-sm font-semibold mb-1">✓ Sử dụng quyền:</p>
+                <p className="text-white text-base opacity-90">{lastResult.matched_permission}</p>
+              </div>
+            )}
+
+            {/* Hiển thị chi tiết lỗi khi DENIED */}
+            {lastResult.status === 'denied' && lastResult.denial_details && lastResult.denial_details.length > 0 && (
+              <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4 text-left max-h-64 overflow-y-auto">
+                <p className="text-white text-sm font-semibold mb-3">
+                  ✗ Đã kiểm tra {lastResult.checked_permissions} quyền:
+                </p>
+                <div className="space-y-2">
+                  {lastResult.denial_details.map((detail, index) => (
+                    <div key={index} className="bg-white bg-opacity-10 rounded-lg p-3">
+                      <p className="text-white text-sm font-semibold mb-1">
+                        {index + 1}. {detail.permission_name}
+                      </p>
+                      <p className="text-white text-xs opacity-90">{detail.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 text-white text-sm opacity-75">
               Tự động quét tiếp sau 3 giây...

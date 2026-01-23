@@ -77,14 +77,26 @@ async function requestAccess(req, res, next) {
                 success: true,
                 status: 'granted',
                 message: 'Truy cập được chấp nhận',
-                data: { user_name: user.full_name, door_name: door.name, access_time: log.access_time }
+                data: {
+                    user_name: user.full_name,
+                    employee_id: user.employee_id,
+                    door_name: door.name,
+                    access_time: log.access_time,
+                    matched_permission: accessCheck.details?.matched_permission
+                }
             });
         } else {
             return res.status(403).json({
                 success: false,
                 status: 'denied',
                 message: accessCheck.reason,
-                data: { user_name: user.full_name, door_name: door.name }
+                data: {
+                    user_name: user.full_name,
+                    employee_id: user.employee_id,
+                    door_name: door.name,
+                    checked_permissions: accessCheck.details?.checked_permissions,
+                    denial_details: accessCheck.details?.all_checks
+                }
             });
         }
     } catch (error) {
@@ -200,14 +212,26 @@ async function scanQR(req, res, next) {
                 success: true,
                 status: 'granted',
                 message: 'Truy cập được chấp nhận',
-                data: { user_name: user.full_name, employee_id: user.employee_id, door_name: door.name, access_time: log.access_time }
+                data: {
+                    user_name: user.full_name,
+                    employee_id: user.employee_id,
+                    door_name: door.name,
+                    access_time: log.access_time,
+                    matched_permission: accessCheck.details?.matched_permission
+                }
             });
         } else {
             return res.status(403).json({
                 success: false,
                 status: 'denied',
                 message: accessCheck.reason,
-                data: { user_name: user.full_name, employee_id: user.employee_id, door_name: door.name }
+                data: {
+                    user_name: user.full_name,
+                    employee_id: user.employee_id,
+                    door_name: door.name,
+                    checked_permissions: accessCheck.details?.checked_permissions,
+                    denial_details: accessCheck.details?.all_checks
+                }
             });
         }
 

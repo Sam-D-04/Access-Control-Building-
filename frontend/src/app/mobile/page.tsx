@@ -213,6 +213,33 @@ export default function MobilePage() {
             <p>{lastAccess.message}</p>
             <p className="text-xs mt-2">{lastAccess.time}</p>
           </div>
+
+          {/* Hiển thị chi tiết khi GRANTED */}
+          {lastAccess.status === 'granted' && lastAccess.matched_permission && (
+            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-3">
+              <p className="text-white text-xs font-semibold mb-1">✓ Sử dụng quyền:</p>
+              <p className="text-white text-sm opacity-90">{lastAccess.matched_permission}</p>
+            </div>
+          )}
+
+          {/* Hiển thị chi tiết lỗi khi DENIED */}
+          {lastAccess.status === 'denied' && lastAccess.denial_details && lastAccess.denial_details.length > 0 && (
+            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-3 max-h-48 overflow-y-auto">
+              <p className="text-white text-xs font-semibold mb-2">
+                ✗ Đã kiểm tra {lastAccess.checked_permissions} quyền:
+              </p>
+              <div className="space-y-2">
+                {lastAccess.denial_details.map((detail: any, index: number) => (
+                  <div key={index} className="bg-white bg-opacity-10 rounded p-2">
+                    <p className="text-white text-xs font-semibold mb-1">
+                      {index + 1}. {detail.permission_name}
+                    </p>
+                    <p className="text-white text-xs opacity-80">{detail.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </MobileLayout>
