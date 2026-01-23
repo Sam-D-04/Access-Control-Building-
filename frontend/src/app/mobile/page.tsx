@@ -210,31 +210,34 @@ export default function MobilePage() {
           </div>
           <div className="text-white text-sm opacity-90">
             <p className="font-semibold">{lastAccess.door}</p>
-            <p>{lastAccess.message}</p>
+            {/* Chỉ hiển thị message khi GRANTED hoặc không có denial_details */}
+            {(lastAccess.status === 'granted' || !lastAccess.denial_details || lastAccess.denial_details.length === 0) && (
+              <p>{lastAccess.message}</p>
+            )}
             <p className="text-xs mt-2">{lastAccess.time}</p>
           </div>
 
           {/* Hiển thị chi tiết khi GRANTED */}
           {lastAccess.status === 'granted' && lastAccess.matched_permission && (
-            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-3">
-              <p className="text-white text-xs font-semibold mb-1">✓ Sử dụng quyền:</p>
+            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-2.5">
+              <p className="text-white text-xs font-semibold mb-1">✓ Quyền:</p>
               <p className="text-white text-sm opacity-90">{lastAccess.matched_permission}</p>
             </div>
           )}
 
-          {/* Hiển thị chi tiết lỗi khi DENIED */}
+          {/* Hiển thị chi tiết lỗi khi DENIED - Rút gọn */}
           {lastAccess.status === 'denied' && lastAccess.denial_details && lastAccess.denial_details.length > 0 && (
-            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-3 max-h-48 overflow-y-auto">
-              <p className="text-white text-xs font-semibold mb-2">
-                ✗ Đã kiểm tra {lastAccess.checked_permissions} quyền:
+            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-2.5 max-h-40 overflow-y-auto">
+              <p className="text-white text-xs font-bold mb-2 text-center">
+                Lý do từ chối:
               </p>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {lastAccess.denial_details.map((detail: any, index: number) => (
                   <div key={index} className="bg-white bg-opacity-10 rounded p-2">
-                    <p className="text-white text-xs font-semibold mb-1">
-                      {index + 1}. {detail.permission_name}
+                    <p className="text-white text-xs font-semibold mb-0.5 opacity-75">
+                      {detail.permission_name}
                     </p>
-                    <p className="text-white text-xs opacity-80">{detail.reason}</p>
+                    <p className="text-white text-xs">{detail.reason}</p>
                   </div>
                 ))}
               </div>

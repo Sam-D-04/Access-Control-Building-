@@ -265,31 +265,34 @@ export default function ScannerPage() {
               <p className="text-white text-2xl font-semibold mb-2">
                 {lastResult.door_name}
               </p>
-              <p className="text-white text-lg opacity-90 mb-2">{lastResult.message}</p>
+              {/* Chỉ hiển thị message ngắn gọn khi GRANTED hoặc khi không có denial_details */}
+              {(lastResult.status === 'granted' || !lastResult.denial_details || lastResult.denial_details.length === 0) && (
+                <p className="text-white text-lg opacity-90 mb-2">{lastResult.message}</p>
+              )}
               <p className="text-white text-sm opacity-75">{lastResult.time}</p>
             </div>
 
             {/* Hiển thị chi tiết khi GRANTED */}
             {lastResult.status === 'granted' && lastResult.matched_permission && (
               <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4">
-                <p className="text-white text-sm font-semibold mb-1">✓ Sử dụng quyền:</p>
+                <p className="text-white text-sm font-semibold mb-1">✓ Quyền sử dụng:</p>
                 <p className="text-white text-base opacity-90">{lastResult.matched_permission}</p>
               </div>
             )}
 
-            {/* Hiển thị chi tiết lỗi khi DENIED */}
+            {/* Hiển thị chi tiết lỗi khi DENIED - Rút gọn hơn */}
             {lastResult.status === 'denied' && lastResult.denial_details && lastResult.denial_details.length > 0 && (
-              <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4 text-left max-h-64 overflow-y-auto">
-                <p className="text-white text-sm font-semibold mb-3">
-                  ✗ Đã kiểm tra {lastResult.checked_permissions} quyền:
+              <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4 text-left max-h-56 overflow-y-auto">
+                <p className="text-white text-base font-bold mb-3 text-center">
+                  Lý do từ chối:
                 </p>
                 <div className="space-y-2">
                   {lastResult.denial_details.map((detail, index) => (
-                    <div key={index} className="bg-white bg-opacity-10 rounded-lg p-3">
-                      <p className="text-white text-sm font-semibold mb-1">
-                        {index + 1}. {detail.permission_name}
+                    <div key={index} className="bg-white bg-opacity-10 rounded-lg p-2.5">
+                      <p className="text-white text-xs font-semibold mb-1 opacity-75">
+                        {detail.permission_name}
                       </p>
-                      <p className="text-white text-xs opacity-90">{detail.reason}</p>
+                      <p className="text-white text-sm">{detail.reason}</p>
                     </div>
                   ))}
                 </div>
