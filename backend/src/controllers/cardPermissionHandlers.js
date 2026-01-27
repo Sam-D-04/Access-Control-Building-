@@ -1,4 +1,3 @@
-// Handlers mới cho card permissions (many-to-many)
 const {
     getCardPermissions,
     assignPermissionToCard,

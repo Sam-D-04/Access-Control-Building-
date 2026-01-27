@@ -1,7 +1,7 @@
 const {
     findCardById,
     getAllCards,
-    getCardsByUser, // Lưu ý: Model giữ tên này hay findCardsByUserId thì sửa cho khớp nhé (như file trước chúng ta chốt là getCardsByUser)
+    getCardsByUser, 
     createCard,
     updateCard,
     activateCard,
@@ -53,7 +53,6 @@ async function getCardByIdHandler(req, res, next) {
 // POST /api/cards - Tạo thẻ mới
 async function createCardHandler(req, res, next) {
     try {
-        // --- SỬA TÊN BIẾN TẠI ĐÂY ---
         const { card_uid, user_id, issued_at, expired_at, is_active } = req.body;
 
         // Validate required fields
@@ -67,10 +66,8 @@ async function createCardHandler(req, res, next) {
         const cardData = {
             card_uid,
             user_id: parseInt(user_id),
-            // --- DÙNG TÊN MỚI ---
             issued_at: issued_at || new Date().toISOString().split('T')[0],
             expired_at: expired_at || null,
-            // --------------------
             is_active: is_active !== undefined ? is_active : true
         };
 
@@ -102,7 +99,6 @@ async function createCardHandler(req, res, next) {
 async function updateCardHandler(req, res, next) {
     try {
         const cardId = req.params.id;
-        // --- SỬA TÊN BIẾN TẠI ĐÂY ---
         const { card_uid, user_id, issued_at, expired_at, is_active } = req.body;
 
         const existingCard = await findCardById(cardId);
@@ -117,10 +113,8 @@ async function updateCardHandler(req, res, next) {
         if (card_uid !== undefined) cardData.card_uid = card_uid;
         if (user_id !== undefined) cardData.user_id = parseInt(user_id);
         
-        // --- CẬP NHẬT KEY MỚI ---
         if (issued_at !== undefined) cardData.issued_at = issued_at;
         if (expired_at !== undefined) cardData.expired_at = expired_at;
-        // ------------------------
 
         if (is_active !== undefined) cardData.is_active = is_active;
 
@@ -148,7 +142,6 @@ async function updateCardHandler(req, res, next) {
     }
 }
 
-// ... (Các hàm activateCardHandler, deactivateCardHandler, deleteCardHandler GIỮ NGUYÊN KHÔNG ĐỔI)
 async function activateCardHandler(req, res, next) {
     try {
         const cardId = req.params.id;

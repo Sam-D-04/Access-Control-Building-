@@ -14,7 +14,7 @@ async function getAllPermissions() {
     `;
     const permissions = await executeQuery(sql, []);
 
-    // Parse JSON cho mỗi permission (chỉ khi là string)
+    // Parse JSON cho mỗi permission 
     return permissions.map(p => {
         if (p.time_restrictions && typeof p.time_restrictions === 'string') {
             p.time_restrictions = JSON.parse(p.time_restrictions);
@@ -26,7 +26,7 @@ async function getAllPermissions() {
     });
 }
 
-// Tìm permission theo ID (kèm danh sách doors)
+// Tìm permission theo id
 async function findPermissionById(permissionId) {
     const sql = 'SELECT * FROM permissions WHERE id = ?';
     const permission = await getOneRow(sql, [permissionId]);
@@ -35,7 +35,7 @@ async function findPermissionById(permissionId) {
         return null;
     }
     
-    // Parse JSON time_restrictions (chỉ khi là string)
+    // Parse JSON time_restrictions 
     if (permission.time_restrictions && typeof permission.time_restrictions === 'string') {
         permission.time_restrictions = JSON.parse(permission.time_restrictions);
     }
@@ -43,7 +43,7 @@ async function findPermissionById(permissionId) {
         permission.allowed_door_ids = JSON.parse(permission.allowed_door_ids);
     }
     
-    // Lấy danh sách doors (nếu mode = 'specific')
+    // Lấy danh sách doors 
     if (permission.door_access_mode === 'specific') {
         const doorsSql = `
             SELECT d.id, d.name, d.location
@@ -89,7 +89,7 @@ async function createPermission(permissionData) {
         const result = await executeQuery(sql, params);
         const permissionId = result.insertId;
         
-        // Nếu mode = 'specific', insert vào permission_doors
+        // Nếu mode = specific, insert vào permission_doors
         if (door_access_mode === 'specific' && door_ids && door_ids.length > 0) {
             const doorSql = 'INSERT INTO permission_doors (permission_id, door_id) VALUES ?';
             const values = door_ids.map(doorId => [permissionId, doorId]);
@@ -168,7 +168,7 @@ async function deletePermission(permissionId) {
     return result.affectedRows > 0;
 }
 
-// Xóa permission vĩnh viễn (hard delete - CASCADE sẽ tự động xóa permission_doors)
+// Xóa permission vĩnh viễn 
 async function permanentDeletePermission(permissionId) {
     const sql = 'DELETE FROM permissions WHERE id = ?';
     const result = await executeQuery(sql, [permissionId]);
@@ -206,18 +206,18 @@ async function getAllowedDoors(permissionId) {
     
     const { door_access_mode } = permission;
     
-    // Nếu mode = 'all', trả về tất cả doors
+    // Nếu mode = all, trả về tất cả doors
     if (door_access_mode === 'all') {
         const sql = 'SELECT * FROM doors WHERE is_active = 1';
         return await executeQuery(sql, []);
     }
     
-    // Nếu mode = 'none', trả về mảng rỗng
+    // Nếu mode = none, trả về mảng rỗng
     if (door_access_mode === 'none') {
         return [];
     }
     
-    // Nếu mode = 'specific', JOIN với permission_doors
+    // Nếu mode = specific join với permission_doors
     const sql = `
         SELECT d.*
         FROM doors d
@@ -238,17 +238,17 @@ async function hasAccessToDoor(permissionId, doorId) {
     
     const { door_access_mode } = permission;
     
-    // Nếu mode = 'all', có quyền vào tất cả
+    // Nếu mode = all, có quyền vào tất cả
     if (door_access_mode === 'all') {
         return true;
     }
     
-    // Nếu mode = 'none', không có quyền
+    // Nếu mode = none, không có quyền
     if (door_access_mode === 'none') {
         return false;
     }
     
-    // Nếu mode = 'specific', kiểm tra trong permission_doors
+    // Nếu mode = specific, kiểm tra trong permission_doors
     const checkSql = `
         SELECT 1 FROM permission_doors
         WHERE permission_id = ? AND door_id = ?
@@ -271,7 +271,7 @@ function checkTimeRestrictions(permission, accessTime = new Date()) {
     const { start_time, end_time, allowed_days } = restrictions;
     
     // Kiểm tra ngày trong tuần (1=Monday, 7=Sunday)
-    const dayOfWeek = accessTime.getDay() || 7; // 0=Sunday -> 7
+    const dayOfWeek = accessTime.getDay() || 7; 
     if (allowed_days && !allowed_days.includes(dayOfWeek)) {
         return {
             allowed: false,
@@ -287,7 +287,7 @@ function checkTimeRestrictions(permission, accessTime = new Date()) {
         const startMinutes = startHour * 60 + startMin;
         const endMinutes = endHour * 60 + endMin;
         
-        // Xử lý trường hợp qua nửa đêm (ví dụ: 18:00 - 06:00)
+        // Xử lý trường hợp qua nửa đêm 
         if (startMinutes > endMinutes) {
             if (currentTime < startMinutes && currentTime > endMinutes) {
                 return {

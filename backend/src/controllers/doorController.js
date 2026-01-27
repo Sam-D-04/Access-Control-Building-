@@ -18,7 +18,7 @@ async function getDoorsHandler(req, res, next) {
 
         let doors;
 
-        // Filter theo department_id nếu có
+        //theo department_id 
         if (department_id) {
             doors = await getDoorsByDepartment(department_id);
         } else {
@@ -137,7 +137,7 @@ async function updateDoorHandler(req, res, next) {
     }
 }
 
-// PUT /api/doors/:id/lock - Khóa cửa khẩn cấp + MQTT
+// PUT /api/doors/:id/lock - Khóa cửa khẩn cấp
 async function lockDoorHandler(req, res, next) {
     try {
         const doorId = req.params.id;
@@ -186,7 +186,7 @@ async function lockDoorHandler(req, res, next) {
     }
 }
 
-// PUT /api/doors/:id/unlock - Mở khóa cửa + MQTT
+// PUT /api/doors/:id/unlock - Mở khóa cửa
 async function unlockDoorHandler(req, res, next) {
     try {
         const doorId = req.params.id;

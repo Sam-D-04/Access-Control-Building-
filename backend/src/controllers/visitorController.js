@@ -3,7 +3,6 @@ const { CustomError } = require('../middlewares/errorHandler');
 
 
 // POST /api/visitors/capture - Lưu ảnh Base64 vào DB
-// Dòng 5-36
 async function captureVisitorPhoto(req, res, next) {
     try {
         // Nhận data từ frontend
@@ -13,7 +12,6 @@ async function captureVisitorPhoto(req, res, next) {
             throw new CustomError('Không tìm thấy dữ liệu ảnh', 400);
         }
 
-        // INSERT vào DB
         const sql = `
             INSERT INTO visitor (photo_path, notes)
             VALUES (?, ?)
@@ -85,20 +83,18 @@ async function getVisitorPhotos(req, res, next) {
             ? 'WHERE ' + whereClauses.join(' AND ')
             : '';
 
-        // ===== QUERY DANH SÁCH =====
         const sql = whereSQL
             ? `SELECT * FROM visitor ${whereSQL} ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`
             : `SELECT * FROM visitor ORDER BY captured_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
 
         const photos = await executeQuery(sql, whereParams);
 
-        // ===== ĐẾM TỔNG SỐ =====
         const countSQL = whereSQL
             ? `SELECT COUNT(*) as total FROM visitor ${whereSQL}`
             : `SELECT COUNT(*) as total FROM visitor`;
         const countResult = await getOneRow(countSQL, whereParams);
 
-        // ===== RESPONSE =====
+
         res.json({
             success: true,
             data: photos,
@@ -207,11 +203,10 @@ async function getVisitorStats(req, res, next) {
     try {
         const { start_date, end_date } = req.query;
 
-        // ===== XÂY DỰNG ĐIỀU KIỆN =====
         let whereClauses = [];
         let params = [];
 
-        // Lọc theo khoảng ngày (giống logic trong getVisitorPhotos)
+        // Lọc theo khoảng ngày 
         if (start_date && end_date) {
             whereClauses.push('DATE(captured_at) BETWEEN ? AND ?');
             params.push(start_date, end_date);
@@ -227,19 +222,18 @@ async function getVisitorStats(req, res, next) {
             ? 'WHERE ' + whereClauses.join(' AND ')
             : '';
 
-        // ===== QUERY THỐNG KÊ =====
         const sql = whereClause
             ? `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor ${whereClause}`
             : `SELECT COUNT(*) as total, SUM(CASE WHEN is_checkout = 1 THEN 1 ELSE 0 END) as checked_out FROM visitor`;
 
         const result = await getOneRow(sql, params);
 
-        // ===== TÍNH TOÁN =====
+
         const total = result.total || 0;
         const checked_out = parseInt(result.checked_out || 0);
         const inside = total - checked_out;  // Còn trong tòa nhà
 
-        // ===== RESPONSE =====
+
         res.json({
             success: true,
             data: {

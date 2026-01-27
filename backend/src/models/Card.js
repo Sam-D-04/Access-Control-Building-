@@ -1,7 +1,7 @@
 // backend/src/models/Card.js
 const { executeQuery, getOneRow } = require('../config/database');
 
-// 1. Tìm thẻ theo ID
+//Tìm thẻ theo id
 async function findCardById(cardId) {
     const sql = `
         SELECT 
@@ -17,7 +17,7 @@ async function findCardById(cardId) {
     return await getOneRow(sql, [cardId]);
 }
 
-// 2. Tìm thẻ theo UID (Dùng cho Scan)
+//Tìm thẻ theo uid
 async function findCardByUid(cardUid) {
     const sql = `
         SELECT 
@@ -36,7 +36,7 @@ async function findCardByUid(cardUid) {
     return await getOneRow(sql, [cardUid]);
 }
 
-// 3. Lấy thẻ theo User
+//Lấy thẻ theo User
 async function getCardsByUser(userId) {
     const sql = `
         SELECT 
@@ -161,7 +161,7 @@ async function deactivateExpiredCards() {
         AND expired_at < NOW()
     `;
     const result = await executeQuery(sql);
-    return result.affectedRows; // Trả về số lượng thẻ vừa bị khóa
+    return result.affectedRows; 
 }
 
 // Gán permission cho card

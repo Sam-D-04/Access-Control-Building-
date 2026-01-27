@@ -179,10 +179,7 @@ router.put('/visitors/photos/:id/checkout', authenticateToken, requireRole('admi
 router.get('/visitors/stats', authenticateToken, requireRole('admin', 'security'), visitorController.getVisitorStats);
 
 
-
-// ===============================================
 // PERMISSION ROUTES - /api/permissions
-// ===============================================
 
 // GET /api/permissions - Lấy tất cả permissions
 router.get('/permissions', authenticateToken, requireRole('admin', 'security'), permissionController.getAllPermissionsHandler);

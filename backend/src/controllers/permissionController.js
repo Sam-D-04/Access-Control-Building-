@@ -14,8 +14,6 @@ async function getAllPermissionsHandler(req, res, next) {
     try {
         const permissions = await getAllPermissions();
 
-        // door_count đã được tính trong query (JOIN + COUNT), không cần loop nữa
-
         return res.json({
             success: true,
             data: permissions,

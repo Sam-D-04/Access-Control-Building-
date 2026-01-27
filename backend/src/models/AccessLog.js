@@ -1,6 +1,5 @@
 const { executeQuery, getOneRow } = require('../config/database');
 
-// tạo log mới (khi quẹt thẻ)
 async function createAccessLog(logData) {
     const sql = `
         INSERT INTO access_logs (
@@ -102,7 +101,7 @@ async function getAllLogs(filters = {}) {
     // Order by mới nhất
     sql += ' ORDER BY al.access_time DESC';
 
-    // Pagination - parse to safe integers để tránh SQL injection
+    // Pagination
     const safeLimit = parseInt(filters.limit) || 20;
     const safeOffset = parseInt(filters.offset) || 0;
 
@@ -112,7 +111,7 @@ async function getAllLogs(filters = {}) {
     return logs;
 }
 
-// lấy logs của một user (cho employee xem lịch sử của mình)
+// lấy logs của một user
 async function getLogsByUserId(userId, limit = 20, offset = 0) {
     // Parse to safe integers
     const safeLimit = parseInt(limit) || 20;
@@ -139,9 +138,9 @@ async function getLogsByUserId(userId, limit = 20, offset = 0) {
     return logs;
 }
 
-// lấy logs gần nhất (cho real-time monitor)
+// lấy logs gần nhất
 async function getRecentLogs(limit = 10) {
-    // Parse limit to integer để tránh SQL injection và lỗi bind parameter
+    
     const safeLimit = parseInt(limit) || 10;
 
     const sql = `
@@ -181,7 +180,7 @@ async function getTodayStats() {
     return stats;
 }
 
-// thống kê theo cửa (hôm nay)
+// thống kê theo cửa hôm nay
 async function getTodayStatsByDoor() {
     const sql = `
         SELECT
@@ -200,7 +199,7 @@ async function getTodayStatsByDoor() {
     return stats;
 }
 
-// đếm tổng số logs (cho pagination)
+// đếm tổng số logs 
 async function countLogs(filters = {}) {
     let sql = 'SELECT COUNT(*) as total FROM access_logs WHERE 1=1';
     const params = [];

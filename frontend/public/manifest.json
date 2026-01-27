@@ -1,7 +1,7 @@
 {
   "name": "Access Control System",
-  "short_name": "ACS Mobile",
-  "description": "Hệ thống kiểm soát ra vào tòa nhà - Mobile App",
+  "short_name": "",
+  "description": "Hệ thống kiểm soát ra vào tòa nhà",
   "start_url": "/mobile",
   "display": "standalone",
   "background_color": "#ffffff",

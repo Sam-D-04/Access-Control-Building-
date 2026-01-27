@@ -1,12 +1,5 @@
 const { executeQuery, getOneRow } = require('../config/database');
 
-// ===============================================
-// BASIC CRUD
-// ===============================================
-
-/**
- * Tìm phòng ban theo ID
- */
 async function findDepartmentById(deptId) {
     const sql = `
         SELECT 
@@ -20,9 +13,6 @@ async function findDepartmentById(deptId) {
     return department;
 }
 
-/**
- * Lấy tất cả phòng ban
- */
 async function getAllDepartments() {
     const sql = `
         SELECT 
@@ -36,9 +26,7 @@ async function getAllDepartments() {
     return departments;
 }
 
-/**
- * Lấy phòng ban theo level
- */
+
 async function getDepartmentsByLevel(level) {
     const sql = `
         SELECT 
@@ -53,16 +41,12 @@ async function getDepartmentsByLevel(level) {
     return departments;
 }
 
-/**
- * Lấy phòng ban root (level 0)
- */
+
 async function getRootDepartments() {
     return getDepartmentsByLevel(0);
 }
 
-/**
- * Tạo phòng ban mới
- */
+
 async function createDepartment(data) {
     const { name, parent_id, description } = data;
     
@@ -85,13 +69,11 @@ async function createDepartment(data) {
     return result.insertId;
 }
 
-/**
- * Cập nhật phòng ban
- */
+
 async function updateDepartment(deptId, data) {
     const { name, parent_id, description } = data;
     
-    // Kiểm tra không cho phép set parent = chính nó
+    // Kiểm tra không cho phép set parent
     if (parent_id && parseInt(parent_id) === parseInt(deptId)) {
         throw new Error('Không thể set parent là chính nó');
     }
@@ -132,15 +114,13 @@ async function updateDepartment(deptId, data) {
         deptId
     ]);
     
-    // Cập nhật lại level của tất cả children (recursive)
+    // Cập nhật lại level của tất cả children 
     await updateChildrenLevels(deptId);
     
     return result.affectedRows > 0;
 }
 
-/**
- * Xóa phòng ban
- */
+
 async function deleteDepartment(deptId) {
     // Check xem có nhân viên không
     const countSql = 'SELECT COUNT(*) as count FROM users WHERE department_id = ?';
@@ -163,14 +143,7 @@ async function deleteDepartment(deptId) {
     return result.affectedRows > 0;
 }
 
-// ===============================================
-// HIERARCHY FUNCTIONS
-// ===============================================
 
-/**
- * Lấy tất cả department cha (ancestors) của một department
- * Ví dụ: IT-Backend (id=10) → [10, 4, 1] (Backend → IT → Technical)
- */
 async function getDepartmentAncestors(deptId) {
     const ancestors = [];
     let currentId = deptId;
@@ -191,10 +164,7 @@ async function getDepartmentAncestors(deptId) {
     return ancestors;
 }
 
-/**
- * Lấy tất cả department con (descendants) của một department (recursive)
- * Ví dụ: IT (id=4) → [4, 10, 11, 12, 13] (IT + tất cả teams)
- */
+
 async function getDepartmentDescendants(deptId) {
     const descendants = [deptId];
     
@@ -209,9 +179,7 @@ async function getDepartmentDescendants(deptId) {
     return descendants;
 }
 
-/**
- * Lấy children trực tiếp (không recursive)
- */
+
 async function getDirectChildren(deptId) {
     const sql = `
         SELECT 
@@ -228,9 +196,7 @@ async function getDirectChildren(deptId) {
     return children;
 }
 
-/**
- * Đếm số nhân viên trong phòng ban (bao gồm cả sub-departments)
- */
+
 async function countEmployeesInDepartment(deptId, includeChildren = false) {
     if (!includeChildren) {
         // Chỉ đếm nhân viên trực tiếp
@@ -256,9 +222,7 @@ async function countEmployeesInDepartment(deptId, includeChildren = false) {
     }
 }
 
-/**
- * Lấy tất cả phòng ban kèm số nhân viên
- */
+
 async function getAllDepartmentsWithCount() {
     const sql = `
         SELECT
@@ -286,9 +250,7 @@ async function getAllDepartmentsWithCount() {
     return departments;
 }
 
-/**
- * Build cây phòng ban (tree structure)
- */
+
 async function buildDepartmentTree() {
     const allDepts = await getAllDepartmentsWithCount();
     
@@ -316,21 +278,13 @@ async function buildDepartmentTree() {
     return tree;
 }
 
-// ===============================================
-// HELPER FUNCTIONS
-// ===============================================
 
-/**
- * Check circular reference (A → B → A)
- */
 async function checkCircularReference(deptId, newParentId) {
     const descendants = await getDepartmentDescendants(deptId);
     return descendants.includes(newParentId);
 }
 
-/**
- * Cập nhật lại level của tất cả children khi parent thay đổi
- */
+
 async function updateChildrenLevels(deptId) {
     const dept = await findDepartmentById(deptId);
     const children = await getDirectChildren(deptId);
@@ -342,18 +296,12 @@ async function updateChildrenLevels(deptId) {
             [newLevel, child.id]
         );
         
-        // Recursive update children's children
+       
         await updateChildrenLevels(child.id);
     }
 }
 
-// ===============================================
-// DOOR DEPARTMENTS (Many-to-Many)
-// ===============================================
 
-/**
- * Lấy danh sách department IDs được phép vào cửa này
- */
 async function getAllowedDepartmentsForDoor(doorId) {
     const sql = `
         SELECT department_id 
@@ -365,9 +313,7 @@ async function getAllowedDepartmentsForDoor(doorId) {
     return results.map(r => r.department_id);
 }
 
-/**
- * Gán department cho door
- */
+
 async function assignDepartmentToDoor(doorId, departmentId) {
     const sql = `
         INSERT INTO door_departments (door_id, department_id)
@@ -378,9 +324,7 @@ async function assignDepartmentToDoor(doorId, departmentId) {
     return result.insertId;
 }
 
-/**
- * Xóa department khỏi door
- */
+
 async function removeDepartmentFromDoor(doorId, departmentId) {
     const sql = `
         DELETE FROM door_departments 
@@ -391,9 +335,7 @@ async function removeDepartmentFromDoor(doorId, departmentId) {
     return result.affectedRows > 0;
 }
 
-/**
- * Set tất cả departments cho door (replace all)
- */
+
 async function setDoorDepartments(doorId, departmentIds) {
     // Xóa hết
     await executeQuery('DELETE FROM door_departments WHERE door_id = ?', [doorId]);
@@ -408,9 +350,6 @@ async function setDoorDepartments(doorId, departmentIds) {
     return true;
 }
 
-// ===============================================
-// EXPORTS
-// ===============================================
 
 module.exports = {
     // Basic CRUD

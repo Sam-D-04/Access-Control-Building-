@@ -27,6 +27,28 @@ CREATE TABLE `access_logs` (
   CONSTRAINT `access_logs_ibfk_3` FOREIGN KEY (`door_id`) REFERENCES `doors` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=126 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `card_permissions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `card_id` int NOT NULL,
+  `permission_id` int NOT NULL,
+  `assigned_by` int DEFAULT NULL COMMENT 'User ID người gán permission',
+  `assigned_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `valid_from` date DEFAULT NULL COMMENT 'Ngày bắt đầu hiệu lực',
+  `valid_until` date DEFAULT NULL COMMENT 'Ngày hết hiệu lực',
+  `is_active` tinyint(1) DEFAULT '1',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_card_permission` (`card_id`,`permission_id`),
+  KEY `fk_card_permissions_user` (`assigned_by`),
+  KEY `idx_card_id` (`card_id`),
+  KEY `idx_permission_id` (`permission_id`),
+  KEY `idx_active` (`is_active`),
+  KEY `idx_valid_dates` (`valid_from`,`valid_until`),
+  CONSTRAINT `fk_card_permissions_card` FOREIGN KEY (`card_id`) REFERENCES `cards` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_card_permissions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_card_permissions_user` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `cards` (
   `id` int NOT NULL AUTO_INCREMENT,
   `card_uid` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Mã thẻ RFID (CARD-XXX)',
@@ -58,19 +80,6 @@ CREATE TABLE `departments` (
   CONSTRAINT `departments_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
   CONSTRAINT `departments_ibfk_2` FOREIGN KEY (`parent_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `door_departments` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `door_id` int NOT NULL COMMENT 'FK tới doors',
-  `department_id` int NOT NULL COMMENT 'FK tới departments',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unique_door_dept` (`door_id`,`department_id`),
-  KEY `idx_door` (`door_id`),
-  KEY `idx_dept` (`department_id`),
-  CONSTRAINT `door_departments_ibfk_1` FOREIGN KEY (`door_id`) REFERENCES `doors` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `door_departments_ibfk_2` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Nhiều phòng ban có thể vào 1 cửa';
 
 CREATE TABLE `doors` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -138,6 +147,19 @@ CREATE TABLE `users` (
   KEY `idx_users_employee_id` (`employee_id`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `visitor` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `photo_path` longtext COLLATE utf8mb4_unicode_ci,
+  `notes` text COLLATE utf8mb4_unicode_ci COMMENT 'Ghi chú: khách đến gặp ai, mục đích gì',
+  `captured_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian chụp',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `checkout_photo_path` longtext COLLATE utf8mb4_unicode_ci,
+  `is_checkout` tinyint(1) DEFAULT '0',
+  `time_out` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_captured_at` (`captured_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 

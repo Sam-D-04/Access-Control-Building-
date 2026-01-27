@@ -1,6 +1,5 @@
 const {
     findDepartmentById,
-    getAllDepartments,
     getRootDepartments,
     getDirectChildren,
     createDepartment,
@@ -10,9 +9,6 @@ const {
     buildDepartmentTree
 } = require('../models/Department');
 
-// ===============================================
-// DEPARTMENT CRUD
-// ===============================================
 
 // GET /api/departments - Lấy tất cả departments
 async function getAllDepartmentsHandler(req, res, next) {
@@ -189,7 +185,7 @@ async function deleteDepartmentHandler(req, res, next) {
     try {
         const deptId = req.params.id;
 
-        // Check exists
+        // Check 
         const dept = await findDepartmentById(deptId);
         if (!dept) {
             return res.status(404).json({
