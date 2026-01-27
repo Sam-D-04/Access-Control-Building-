@@ -265,10 +265,8 @@ export default function ScannerPage() {
               <p className="text-white text-2xl font-semibold mb-2">
                 {lastResult.door_name}
               </p>
-              {/* Chỉ hiển thị message ngắn gọn khi GRANTED hoặc khi không có denial_details */}
-              {(lastResult.status === 'granted' || !lastResult.denial_details || lastResult.denial_details.length === 0) && (
-                <p className="text-white text-lg opacity-90 mb-2">{lastResult.message}</p>
-              )}
+              {/* Hiển thị message ngắn gọn */}
+              <p className="text-white text-lg opacity-90 mb-2">{lastResult.message}</p>
               <p className="text-white text-sm opacity-75">{lastResult.time}</p>
             </div>
 
@@ -277,22 +275,6 @@ export default function ScannerPage() {
               <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4">
                 <p className="text-white text-sm font-semibold mb-1">✓ Quyền sử dụng:</p>
                 <p className="text-white text-base opacity-90">{lastResult.matched_permission}</p>
-              </div>
-            )}
-
-            {/* Hiển thị lý do từ chối - Chỉ lý do, không có tên permission */}
-            {lastResult.status === 'denied' && lastResult.denial_details && lastResult.denial_details.length > 0 && (
-              <div className="mt-4 bg-white bg-opacity-10 rounded-xl p-4 text-left max-h-56 overflow-y-auto">
-                <p className="text-white text-base font-bold mb-3 text-center">
-                  Lý do:
-                </p>
-                <div className="space-y-2">
-                  {lastResult.denial_details.map((detail, index) => (
-                    <div key={index} className="bg-white bg-opacity-10 rounded-lg p-3">
-                      <p className="text-white text-sm">{detail.reason}</p>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
