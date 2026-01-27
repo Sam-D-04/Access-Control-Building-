@@ -89,13 +89,11 @@ async function requestAccess(req, res, next) {
             return res.status(403).json({
                 success: false,
                 status: 'denied',
-                message: accessCheck.reason,
+                message: 'Không có quyền truy cập',
                 data: {
                     user_name: user.full_name,
                     employee_id: user.employee_id,
-                    door_name: door.name,
-                    checked_permissions: accessCheck.details?.checked_permissions,
-                    denial_details: accessCheck.details?.all_checks
+                    door_name: door.name
                 }
             });
         }
@@ -224,13 +222,11 @@ async function scanQR(req, res, next) {
             return res.status(403).json({
                 success: false,
                 status: 'denied',
-                message: accessCheck.reason,
+                message: 'Không có quyền truy cập',
                 data: {
                     user_name: user.full_name,
                     employee_id: user.employee_id,
-                    door_name: door.name,
-                    checked_permissions: accessCheck.details?.checked_permissions,
-                    denial_details: accessCheck.details?.all_checks
+                    door_name: door.name
                 }
             });
         }
