@@ -1,0 +1,748 @@
+================================================================================
+          HƯỚNG DẪN CÀI ĐẶT VÀ SỬ DỤNG HỆ THỐNG KIỂM SOÁT RA VÀO TÒA NHÀ
+                        (Access Control Building System)
+================================================================================
+
+MỤC LỤC
+1. Yêu cầu hệ thống
+2. Cài đặt Backend (Node.js + Express + MySQL)
+3. Cài đặt Frontend (Next.js + React)
+4. Cấu hình Database
+5. Cấu hình MQTT (Tùy chọn)
+6. Chạy ứng dụng
+7. Tài khoản mặc định
+8. Hướng dẫn sử dụng các chức năng chính
+9. Xử lý lỗi thường gặp
+
+================================================================================
+1. YÊU CẦU HỆ THỐNG
+================================================================================
+
+Phần mềm cần thiết:
+- Node.js: phiên bản 18.x trở lên
+- MySQL: phiên bản 8.0 trở lên
+- npm hoặc yarn
+- Trình duyệt web hiện đại (Chrome, Firefox, Edge)
+
+Kiến thức:
+- Cơ bản về dòng lệnh (Command Line)
+- Cơ bản về MySQL/Database
+- Hiểu biết về REST API (Tùy chọn)
+
+================================================================================
+2. CÀI ĐẶT BACKEND (NODE.JS + EXPRESS + MYSQL)
+================================================================================
+
+BƯỚC 1: Cài đặt Node.js
+------------------------
+1. Truy cập: https://nodejs.org/
+2. Tải và cài đặt phiên bản LTS (Long Term Support)
+3. Kiểm tra cài đặt thành công:
+   - Mở Command Prompt (CMD) hoặc Terminal
+   - Chạy lệnh: node --version
+   - Chạy lệnh: npm --version
+
+BƯỚC 2: Cài đặt MySQL
+----------------------
+1. Truy cập: https://dev.mysql.com/downloads/mysql/
+2. Tải và cài đặt MySQL Community Server
+3. Ghi nhớ thông tin:
+   - Username: root (mặc định)
+   - Password: (mật khẩu bạn đặt khi cài)
+   - Port: 3306 (mặc định)
+
+BƯỚC 3: Cài đặt các package Backend
+------------------------------------
+1. Mở Command Prompt
+2. Di chuyển đến thư mục backend:
+   cd E:\ĐỒ ÁN\Access-Control-Building-\backend
+
+3. Cài đặt các dependencies:
+   npm install
+
+   Các package sẽ được cài:
+   - express: Web framework
+   - mysql2: MySQL driver
+   - bcryptjs: Mã hóa mật khẩu
+   - jsonwebtoken: JWT authentication
+   - cors: Cross-Origin Resource Sharing
+   - dotenv: Quản lý biến môi trường
+   - mqtt: MQTT client cho IoT
+   - node-cron: Scheduled tasks
+
+BƯỚC 4: Cấu hình biến môi trường Backend
+-----------------------------------------
+1. Tạo file .env trong thư mục backend:
+   cd E:\ĐỒ ÁN\Access-Control-Building-\backend
+   notepad .env
+
+2. Thêm nội dung sau (chỉnh sửa theo cấu hình của bạn):
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_mysql_password_here
+DB_NAME=access_control
+
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# JWT Configuration
+JWT_SECRET=your_secret_key_here_change_in_production
+JWT_EXPIRE=7d
+
+# MQTT Configuration (Tùy chọn - nếu dùng thiết bị IoT)
+MQTT_BROKER=mqtt://localhost:1883
+MQTT_USERNAME=
+MQTT_PASSWORD=
+
+3. Lưu file (Ctrl + S)
+
+LƯU Ý: Thay thế các giá trị sau:
+- your_mysql_password_here: Mật khẩu MySQL của bạn
+- your_secret_key_here: Chuỗi bí mật cho JWT (dài ít nhất 32 ký tự)
+
+================================================================================
+3. CÀI ĐẶT FRONTEND (NEXT.JS + REACT)
+================================================================================
+
+BƯỚC 1: Cài đặt các package Frontend
+-------------------------------------
+1. Mở Command Prompt mới
+2. Di chuyển đến thư mục frontend:
+   cd E:\ĐỒ ÁN\Access-Control-Building-\frontend
+
+3. Cài đặt các dependencies:
+   npm install
+
+   Các package sẽ được cài:
+   - next: React framework
+   - react: UI library
+   - react-dom: React rendering
+   - axios: HTTP client
+   - zustand: State management
+   - tailwindcss: CSS framework
+   - qrcode.react: QR code generator
+   - @yudiel/react-qr-scanner: QR scanner
+   - mqtt: MQTT client
+   - lucide-react: Icon library
+   - react-hot-toast: Notifications
+
+BƯỚC 2: Cấu hình biến môi trường Frontend
+------------------------------------------
+1. Tạo file .env.local trong thư mục frontend:
+   cd E:\ĐỒ ÁN\Access-Control-Building-\frontend
+   notepad .env.local
+
+2. Thêm nội dung sau:
+
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+
+# MQTT Configuration (Tùy chọn)
+NEXT_PUBLIC_MQTT_BROKER=ws://localhost:9001
+NEXT_PUBLIC_MQTT_USERNAME=
+NEXT_PUBLIC_MQTT_PASSWORD=
+
+3. Lưu file
+
+================================================================================
+4. CẤU HÌNH DATABASE
+================================================================================
+
+BƯỚC 1: Tạo Database
+---------------------
+1. Mở MySQL Workbench hoặc Command Line MySQL
+2. Đăng nhập MySQL:
+   mysql -u root -p
+   (Nhập mật khẩu khi được hỏi)
+
+3. Tạo database:
+   CREATE DATABASE access_control CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+4. Chọn database:
+   USE access_control;
+
+BƯỚC 2: Import Schema và Data
+------------------------------
+1. Nếu dùng MySQL Workbench:
+   - File > Open SQL Script
+   - Chọn file: E:\ĐỒ ÁN\Access-Control-Building-\schemma.sql
+   - Click Execute (⚡ icon)
+
+2. Nếu dùng Command Line:
+   mysql -u root -p access_control < "E:\ĐỒ ÁN\Access-Control-Building-\schemma.sql"
+
+BƯỚC 3: Kiểm tra Database
+--------------------------
+1. Kiểm tra các bảng đã được tạo:
+   SHOW TABLES;
+
+   Kết quả phải có 9 bảng:
+   - users
+   - departments
+   - cards
+   - doors
+   - permissions
+   - permission_doors
+   - card_permissions
+   - access_logs
+   - visitor
+
+2. Kiểm tra dữ liệu mẫu (nếu có):
+   SELECT * FROM users LIMIT 5;
+
+================================================================================
+5. CẤU HÌNH MQTT (TÙY CHỌN - CHO THIẾT BỊ IOT)
+================================================================================
+
+Nếu bạn không dùng thiết bị IoT thực tế, có thể bỏ qua phần này.
+
+BƯỚC 1: Cài đặt Mosquitto MQTT Broker
+--------------------------------------
+1. Truy cập: https://mosquitto.org/download/
+2. Tải và cài đặt Mosquitto cho Windows
+3. Khởi động dịch vụ Mosquitto:
+   net start mosquitto
+
+BƯỚC 2: Cấu hình Mosquitto
+---------------------------
+1. Mở file cấu hình:
+   C:\Program Files\mosquitto\mosquitto.conf
+
+2. Thêm hoặc sửa các dòng sau:
+   listener 1883
+   listener 9001
+   protocol websockets
+   allow_anonymous true
+
+3. Khởi động lại Mosquitto:
+   net stop mosquitto
+   net start mosquitto
+
+================================================================================
+6. CHẠY ỨNG DỤNG
+================================================================================
+
+BƯỚC 1: Chạy Backend Server
+----------------------------
+1. Mở Command Prompt
+2. Di chuyển đến thư mục backend:
+   cd E:\ĐỒ ÁN\Access-Control-Building-\backend
+
+3. Chạy lệnh:
+   # Chạy môi trường development (tự động reload khi có thay đổi)
+   npm run dev
+
+   # Hoặc chạy môi trường production
+   npm start
+
+4. Kiểm tra console, bạn sẽ thấy:
+   ✓ Kết nối database thành công
+      Host: localhost
+      Database: access_control
+   ✓ Server đang chạy tại http://localhost:5000
+
+BƯỚC 2: Chạy Frontend Server
+-----------------------------
+1. Mở Command Prompt MỚI (giữ nguyên terminal backend)
+2. Di chuyển đến thư mục frontend:
+   cd E:\ĐỒ ÁN\Access-Control-Building-\frontend
+
+3. Chạy lệnh:
+   # Chạy môi trường development
+   npm run dev
+
+   # Hoặc build và chạy production
+   npm run build
+   npm start
+
+4. Ứng dụng sẽ chạy tại: http://localhost:3000
+
+BƯỚC 3: Truy cập ứng dụng
+--------------------------
+1. Mở trình duyệt web
+2. Truy cập: http://localhost:3000
+3. Đăng nhập bằng tài khoản mặc định (xem mục 7)
+
+================================================================================
+7. TÀI KHOẢN MẶC ĐỊNH
+================================================================================
+
+Sau khi import database, bạn có thể tạo tài khoản Admin đầu tiên:
+
+Tài khoản Admin:
+- Email: admin@example.com
+- Mật khẩu: Admin@123
+- Role: admin
+- Employee ID: EMP001
+
+Tài khoản Security:
+- Email: security@example.com
+- Mật khẩu: Security@123
+- Role: security
+- Employee ID: EMP002
+
+Tài khoản Employee:
+- Email: employee@example.com
+- Mật khẩu: Employee@123
+- Role: employee
+- Employee ID: EMP003
+
+LƯU Ý:
+- Đổi mật khẩu ngay sau khi đăng nhập lần đầu
+- Mật khẩu được mã hóa bằng bcrypt
+
+================================================================================
+8. HƯỚNG DẪN SỬ DỤNG CÁC CHỨC NĂNG CHÍNH
+================================================================================
+
+8.1. ĐĂNG NHẬP HỆ THỐNG
+------------------------
+1. Truy cập: http://localhost:3000/login
+2. Nhập email và mật khẩu
+3. Click "Đăng nhập"
+4. Hệ thống sẽ chuyển đến Dashboard tương ứng với role
+
+8.2. QUẢN LÝ NGƯỜI DÙNG (ADMIN)
+--------------------------------
+A. Thêm người dùng mới:
+   1. Vào menu: Quản lý > Người dùng
+   2. Click "Thêm người dùng"
+   3. Điền thông tin:
+      - Employee ID (mã nhân viên)
+      - Email
+      - Mật khẩu
+      - Họ tên
+      - Số điện thoại
+      - Phòng ban
+      - Vị trí: staff/manager/director
+      - Role: admin/security/employee
+   4. Chụp ảnh hoặc upload avatar (tùy chọn)
+   5. Click "Lưu"
+
+B. Sửa thông tin người dùng:
+   1. Click vào người dùng cần sửa
+   2. Click "Chỉnh sửa"
+   3. Thay đổi thông tin
+   4. Click "Cập nhật"
+
+C. Vô hiệu hóa người dùng:
+   1. Click vào người dùng
+   2. Click "Vô hiệu hóa"
+   3. Xác nhận
+
+8.3. QUẢN LÝ PHÒNG BAN
+----------------------
+A. Tạo phòng ban mới:
+   1. Vào menu: Quản lý > Phòng ban
+   2. Click "Thêm phòng ban"
+   3. Điền thông tin:
+      - Tên phòng ban
+      - Phòng ban cha (nếu là phòng con)
+      - Mô tả
+   4. Click "Lưu"
+
+B. Xem cơ cấu tổ chức:
+   1. Vào menu: Quản lý > Phòng ban
+   2. Xem dạng cây (Tree view) các phòng ban
+   3. Click vào phòng ban để xem chi tiết:
+      - Số nhân viên
+      - Phòng ban con
+      - Manager
+      - Số cửa thuộc phòng ban
+
+8.4. QUẢN LÝ THẺ (CARDS)
+-------------------------
+A. Tạo thẻ mới:
+   1. Vào menu: Quản lý > Thẻ
+   2. Click "Thêm thẻ"
+   3. Điền thông tin:
+      - Card UID (mã thẻ RFID)
+      - Chọn người dùng
+      - Ngày cấp
+      - Ngày hết hạn (tùy chọn)
+   4. Click "Lưu"
+
+B. Gán permission cho thẻ:
+   1. Click vào thẻ cần gán permission
+   2. Tab "Permissions"
+   3. Click "Thêm permission"
+   4. Chọn permission từ danh sách
+   5. Nhập thời gian hiệu lực (valid_from, valid_until)
+   6. Nhập ghi chú (tùy chọn)
+   7. Click "Gán"
+
+C. Kích hoạt/Vô hiệu hóa thẻ:
+   1. Click vào thẻ
+   2. Click "Kích hoạt" hoặc "Vô hiệu hóa"
+   3. Xác nhận
+
+8.5. QUẢN LÝ CỬA (DOORS)
+-------------------------
+A. Thêm cửa mới:
+   1. Vào menu: Quản lý > Cửa
+   2. Click "Thêm cửa"
+   3. Điền thông tin:
+      - Tên cửa
+      - Vị trí
+      - Phòng ban (tùy chọn)
+   4. Click "Lưu"
+
+B. Khóa/Mở khóa cửa:
+   1. Click vào cửa cần khóa
+   2. Click "Khóa khẩn cấp" hoặc "Mở khóa"
+   3. Xác nhận
+
+C. Xem lịch sử ra vào:
+   1. Click vào cửa
+   2. Tab "Lịch sử"
+   3. Xem danh sách access logs
+
+8.6. QUẢN LÝ PERMISSIONS
+-------------------------
+A. Tạo permission mới:
+   1. Vào menu: Quản lý > Permissions
+   2. Click "Thêm permission"
+   3. Điền thông tin:
+      - Tên permission (VD: "Full Access", "Office Hours")
+      - Mô tả
+      - Door Access Mode:
+        * all: Tất cả cửa
+        * specific: Chỉ định cửa cụ thể
+        * none: Không có cửa nào
+      - Time Restrictions (JSON):
+        {
+          "start_time": "08:00",
+          "end_time": "18:00",
+          "allowed_days": [1,2,3,4,5]
+        }
+        (1=Monday, 7=Sunday)
+      - Priority: Độ ưu tiên (0-100)
+   4. Nếu chọn "specific", chọn các cửa được phép
+   5. Click "Lưu"
+
+B. Thêm/Xóa cửa khỏi permission:
+   1. Click vào permission
+   2. Tab "Doors"
+   3. Click "Thêm cửa" hoặc "Xóa cửa"
+   4. Chọn cửa và xác nhận
+
+8.7. QUẢN LÝ KHÁCH (VISITOR)
+-----------------------------
+A. Check-in khách:
+   1. Vào menu: Khách > Check-in
+   2. Click "Chụp ảnh"
+   3. Cho phép truy cập camera
+   4. Chụp ảnh khách
+   5. Nhập ghi chú (tên khách, mục đích, gặp ai)
+   6. Click "Lưu"
+
+B. Check-out khách:
+   1. Vào menu: Khách > Danh sách
+   2. Tìm khách cần check-out
+   3. Click "Check-out"
+   4. Chụp ảnh check-out
+   5. Xác nhận
+
+C. Xem thống kê khách:
+   1. Vào menu: Khách > Thống kê
+   2. Chọn khoảng thời gian (từ ngày - đến ngày)
+   3. Xem:
+      - Tổng số khách
+      - Số khách đã check-out
+      - Số khách còn trong tòa nhà
+
+D. Lọc danh sách khách:
+   1. Vào menu: Khách > Danh sách
+   2. Chọn bộ lọc:
+      - Ngày bắt đầu
+      - Ngày kết thúc
+      - Giờ bắt đầu
+      - Giờ kết thúc
+   3. Click "Lọc"
+
+8.8. XEM LỊCH SỬ RA VÀO (ACCESS LOGS)
+--------------------------------------
+A. Xem tất cả logs:
+   1. Vào menu: Báo cáo > Lịch sử ra vào
+   2. Xem danh sách logs với các thông tin:
+      - User
+      - Card
+      - Door
+      - Thời gian
+      - Trạng thái (granted/denied)
+      - Lý do từ chối (nếu có)
+
+B. Lọc logs:
+   1. Chọn bộ lọc:
+      - Thời gian (từ - đến)
+      - User
+      - Door
+      - Trạng thái (granted/denied)
+   2. Click "Lọc"
+
+C. Export logs:
+   1. Click "Export"
+   2. Chọn định dạng (CSV/Excel)
+   3. Tải về
+
+8.9. QR CODE ACCESS
+--------------------
+A. Tạo QR Code cá nhân:
+   1. Đăng nhập vào hệ thống
+   2. Vào menu: Hồ sơ > QR Code
+   3. Hệ thống tự động tạo QR code cho user
+   4. Click "Tải xuống" để lưu QR code
+
+B. Quét QR Code để mở cửa:
+   1. Vào menu: Quét QR
+   2. Click "Bật camera"
+   3. Cho phép truy cập camera
+   4. Đưa QR code vào camera
+   5. Chọn cửa cần mở
+   6. Hệ thống xác thực và mở cửa
+
+C. Xem lịch sử truy cập bằng QR:
+   1. Vào menu: Báo cáo > Lịch sử ra vào
+   2. Lọc theo method: "QR Code"
+
+8.10. DASHBOARD & THỐNG KÊ
+---------------------------
+A. Dashboard Admin:
+   1. Sau khi đăng nhập, xem Dashboard
+   2. Thống kê hiển thị:
+      - Tổng số người dùng
+      - Tổng số thẻ hoạt động
+      - Tổng số cửa
+      - Số lượt truy cập hôm nay
+      - Biểu đồ truy cập theo giờ
+      - Top users truy cập nhiều nhất
+      - Logs gần đây
+
+B. Dashboard Security:
+   1. Xem thời gian thực:
+      - Cửa nào đang mở/đóng
+      - Ai vừa ra/vào
+      - Cảnh báo truy cập bị từ chối
+   2. Khóa/Mở khóa cửa khẩn cấp
+   3. Xem camera (nếu tích hợp)
+
+C. Dashboard Employee:
+   1. Xem thông tin cá nhân
+   2. Xem lịch sử ra vào của bản thân
+   3. Xem QR code cá nhân
+   4. Cập nhật hồ sơ
+
+================================================================================
+9. XỬ LÝ LỖI THƯỜNG GẶP
+================================================================================
+
+9.1. LỖI KẾT NỐI DATABASE
+--------------------------
+Lỗi: "Error: connect ECONNREFUSED 127.0.0.1:3306"
+
+Nguyên nhân: MySQL chưa khởi động hoặc cấu hình sai
+
+Giải pháp:
+1. Kiểm tra MySQL đang chạy:
+   # Windows
+   net start MySQL80
+
+2. Kiểm tra cấu hình trong file .env:
+   - DB_HOST=localhost
+   - DB_PORT=3306
+   - DB_USER=root
+   - DB_PASSWORD=đúng_mật_khẩu
+
+3. Test kết nối MySQL:
+   mysql -u root -p
+
+9.2. LỖI PORT ĐÃ ĐƯỢC SỬ DỤNG
+-------------------------------
+Lỗi: "Error: listen EADDRINUSE :::5000"
+
+Nguyên nhân: Port 5000 hoặc 3000 đã được ứng dụng khác sử dụng
+
+Giải pháp:
+1. Tìm process đang dùng port:
+   # Windows
+   netstat -ano | findstr :5000
+
+2. Kill process:
+   taskkill /PID <process_id> /F
+
+3. Hoặc đổi port trong file .env (backend) hoặc package.json (frontend)
+
+9.3. LỖI JWT/AUTHENTICATION
+----------------------------
+Lỗi: "JsonWebTokenError: invalid token"
+
+Nguyên nhân: Token hết hạn hoặc JWT_SECRET không khớp
+
+Giải pháp:
+1. Đăng xuất và đăng nhập lại
+2. Xóa localStorage:
+   F12 > Application > Local Storage > Clear
+3. Kiểm tra JWT_SECRET trong .env backend
+
+9.4. LỖI CORS
+--------------
+Lỗi: "Access to XMLHttpRequest has been blocked by CORS policy"
+
+Nguyên nhân: Backend không cho phép frontend truy cập
+
+Giải pháp:
+1. Kiểm tra CORS đã được cấu hình trong backend
+2. Đảm bảo NEXT_PUBLIC_API_URL đúng trong frontend/.env.local
+
+9.5. LỖI CAMERA/QR SCANNER
+---------------------------
+Lỗi: "NotAllowedError: Permission denied"
+
+Nguyên nhân: Trình duyệt chưa cấp quyền camera
+
+Giải pháp:
+1. Click vào icon khóa (🔒) trên thanh địa chỉ
+2. Cho phép Camera
+3. Reload trang
+
+9.6. LỖI NPM INSTALL
+---------------------
+Lỗi: "npm ERR! code ENOENT"
+
+Nguyên nhân: Thư mục node_modules bị lỗi
+
+Giải pháp:
+1. Xóa thư mục node_modules và package-lock.json:
+   rmdir /s node_modules
+   del package-lock.json
+
+2. Cài lại:
+   npm install
+
+9.7. LỖI BUILD FRONTEND
+------------------------
+Lỗi: "Error: Cannot find module 'next'"
+
+Nguyên nhân: Dependencies chưa được cài đặt
+
+Giải pháp:
+1. Di chuyển đến thư mục frontend
+2. Chạy: npm install
+3. Chạy lại: npm run dev
+
+9.8. LỖI MYSQL UTF8MB4
+-----------------------
+Lỗi: "Error: Unknown collation: 'utf8mb4_0900_ai_ci'"
+
+Nguyên nhân: MySQL version cũ không hỗ trợ utf8mb4_0900_ai_ci
+
+Giải pháp:
+1. Sửa file schemma.sql:
+   Thay utf8mb4_0900_ai_ci bằng utf8mb4_unicode_ci
+
+2. Import lại database
+
+9.9. LỖI PERMISSION DENIED (LINUX/MAC)
+---------------------------------------
+Lỗi: "Error: EACCES: permission denied"
+
+Giải pháp:
+1. Chạy với sudo (Linux/Mac):
+   sudo npm install
+
+2. Hoặc sửa quyền:
+   sudo chown -R $USER:$GROUP ~/.npm
+   sudo chown -R $USER:$GROUP .
+
+================================================================================
+PHỤ LỤC: CÁC LỆNH THƯỜNG DÙNG
+================================================================================
+
+Backend Commands:
+-----------------
+# Cài đặt dependencies
+npm install
+
+# Chạy development mode
+npm run dev
+
+# Chạy production mode
+npm start
+
+# Test database connection
+node src/config/database.js
+
+Frontend Commands:
+------------------
+# Cài đặt dependencies
+npm install
+
+# Chạy development mode
+npm run dev
+
+# Build production
+npm run build
+
+# Chạy production mode
+npm start
+
+# Lint code
+npm run lint
+
+Database Commands:
+------------------
+# Đăng nhập MySQL
+mysql -u root -p
+
+# Tạo database
+CREATE DATABASE access_control;
+
+# Import schema
+mysql -u root -p access_control < schemma.sql
+
+# Backup database
+mysqldump -u root -p access_control > backup.sql
+
+# Restore database
+mysql -u root -p access_control < backup.sql
+
+Git Commands (Tùy chọn):
+------------------------
+# Clone repository
+git clone <repository_url>
+
+# Pull latest changes
+git pull
+
+# Commit changes
+git add .
+git commit -m "Your message"
+git push
+
+================================================================================
+LIÊN HỆ & HỖ TRỢ
+================================================================================
+
+Nếu gặp vấn đề trong quá trình cài đặt hoặc sử dụng:
+
+1. Kiểm tra lại các bước trong hướng dẫn
+2. Xem phần "Xử lý lỗi thường gặp"
+3. Kiểm tra logs trong console (F12 > Console)
+4. Kiểm tra logs trong terminal backend
+
+Thông tin hệ thống:
+- Backend API: http://localhost:5000/api
+- Frontend: http://localhost:3000
+- Database: MySQL 8.0, access_control
+
+Tác giả: SamD
+Phiên bản: 1.0.0
+Cập nhật lần cuối: 2026-01
+
+================================================================================
+KẾT THÚC HƯỚNG DẪN
+================================================================================
