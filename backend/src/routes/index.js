@@ -179,6 +179,46 @@ router.put('/visitors/photos/:id/checkout', authenticateToken, requireRole('admi
 router.get('/visitors/stats', authenticateToken, requireRole('admin', 'security'), visitorController.getVisitorStats);
 
 
+// ADMIN UTILITY ROUTES - /api/admin (Temporary endpoint for setup)
+
+// POST /api/admin/reset-all-passwords - Reset password tất cả users (KHÔNG CẦN TOKEN - CHỈ DÙNG LÚC SETUP)
+router.post('/admin/reset-all-passwords', async (req, res, next) => {
+    try {
+        const bcrypt = require('bcryptjs');
+        const { executeQuery } = require('../config/database');
+
+        // Lấy tất cả users
+        const users = await executeQuery('SELECT id, employee_id, email, full_name FROM users');
+
+        // Mật khẩu mặc định
+        const defaultPassword = '123456';
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+
+        // Update password cho từng user
+        for (const user of users) {
+            await executeQuery('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, user.id]);
+        }
+
+        res.json({
+            success: true,
+            message: `Đã reset password cho ${users.length} users`,
+            data: {
+                total_users: users.length,
+                new_password: defaultPassword,
+                users: users.map(u => ({
+                    id: u.id,
+                    employee_id: u.employee_id,
+                    email: u.email,
+                    full_name: u.full_name
+                }))
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // PERMISSION ROUTES - /api/permissions
 
 // GET /api/permissions - Lấy tất cả permissions
