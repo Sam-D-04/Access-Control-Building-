@@ -17,7 +17,7 @@ frontend/out/
 frontend/build/
 
 # Docker volumes
-mysql_data/
+sql/
 mosquitto_data/
 mosquitto_log/
 
